@@ -1,0 +1,21 @@
+# EduVision Monorepo Gitignore
+
+# Ignore large APK files
+/APK FILES/
+*.apk
+
+# Ignore dependency and build artifacts in ALL directories
+**/node_modules/
+**/.next/
+**/build/
+**/.gradle/
+**/target/
+**/local.properties
+
+# Ignore OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.log

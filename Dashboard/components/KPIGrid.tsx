@@ -1,0 +1,68 @@
+import { Building2, Users, LineChart } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+
+interface KPIGridProps {
+    totalPresent: number;
+    attendanceRate: number;
+}
+
+export function KPIGrid({ totalPresent, attendanceRate }: KPIGridProps) {
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            {/* Card 1: Registered Schools */}
+            <Card className="border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 mb-1">
+                                Registered Schools
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900">1</h3>
+                        </div>
+                        <div className="p-3 bg-blue-100 rounded-full">
+                            <Building2 className="h-6 w-6 text-blue-600" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Card 2: Students Present */}
+            <Card className="border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 mb-1">
+                                Students Present
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900">
+                                {totalPresent}
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-emerald-100 rounded-full">
+                            <Users className="h-6 w-6 text-emerald-600" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Card 3: Attendance Rate */}
+            <Card className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 mb-1">
+                                Attendance Rate
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900">
+                                {isNaN(attendanceRate) ? "0" : attendanceRate.toFixed(1)}%
+                            </h3>
+                        </div>
+                        <div className="p-3 bg-indigo-100 rounded-full">
+                            <LineChart className="h-6 w-6 text-indigo-600" />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
