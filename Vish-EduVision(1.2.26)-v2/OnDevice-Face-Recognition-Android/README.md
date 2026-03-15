@@ -4,7 +4,7 @@
 
 This project is part of a larger ecosystem that includes a [Web Dashboard](file:///c:/AntiGravity/EduVision-Final/Dashboard/README.md) for centralized monitoring.
 
-<img src="https://github.com/user-attachments/assets/3a79776c-e5dd-48c3-8b84-6ec3eaf32d2f" width="80%"/>
+
 
 ## Key Features
 
