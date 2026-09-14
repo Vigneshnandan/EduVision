@@ -197,38 +197,39 @@ class FaceDetectionOverlay(
                     val box = boundingBox.toRectF()
                     var personName = name
                     var boxColor = colorScanning
+                    val isSpoofed = spoofResult != null && spoofResult.isSpoof
 
                     if (viewModel.getNumPeople().toInt() == 0) {
                         personName = ""
                     }
-                    if (spoofResult != null && spoofResult.isSpoof) {
-                        personName = "$personName (Spoof: ${spoofResult.score})"
-                    }
-                    
+
                     if (personID != null && personName != "Not recognized" && viewModel.studentClass.isNotEmpty()) {
-                         val count = (consecutiveDetectionCounts[personID] ?: 0) + 1
-                         consecutiveDetectionCounts[personID] = count
-                         
-                         // Trigger only when threshold is reached
-                         if (count == FRAME_THRESHOLD) {
-                             viewModel.markAttendance(personID, personName)
-                         }
-                         if (count < FRAME_THRESHOLD) {
-                             personName = ""
-                             boxColor = colorScanning
-                         } else {
-                             if (spoofResult != null && spoofResult.isSpoof) {
-                                 boxColor = colorError
-                             } else {
-                                 boxColor = colorSuccess
-                             }
-                         }
-                    } else if (personID != null) {
-                         // Reset count if unrecognized in this frame (though currentFrameIds logic handles most removals, 
-                         // this case handles if ID is somehow present but condition fails)
-                         // Actually the map removal above handles 'not in frame'. 
-                         // If 'in frame' but 'Not recognized' (e.g. low score but same ID? Unlikely from useCase).
-                         // Safe to rely on map removal.
+                        if (isSpoofed) {
+                            // A spoofed frame must never contribute toward attendance.
+                            // Reset any in-progress streak so the person needs
+                            // FRAME_THRESHOLD consecutive genuinely-live frames
+                            // afterward — a single spoofed frame in the middle of
+                            // a streak isn't just ignored/averaged out.
+                            consecutiveDetectionCounts[personID] = 0
+                            boxColor = colorError
+                            personName = "$personName (Spoof detected)"
+                        } else {
+                            val count = (consecutiveDetectionCounts[personID] ?: 0) + 1
+                            consecutiveDetectionCounts[personID] = count
+
+                            // Trigger only when threshold is reached
+                            if (count == FRAME_THRESHOLD) {
+                                viewModel.markAttendance(personID, personName)
+                            }
+                            if (count < FRAME_THRESHOLD) {
+                                personName = ""
+                                boxColor = colorScanning
+                            } else {
+                                boxColor = colorSuccess
+                            }
+                        }
+                    } else if (isSpoofed) {
+                        personName = "$personName (Spoof detected)"
                     }
 
                     boundingBoxTransform.mapRect(box)

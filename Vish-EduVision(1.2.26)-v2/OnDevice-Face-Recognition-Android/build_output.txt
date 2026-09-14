@@ -42,7 +42,10 @@ w: [ksp] [Experimental] Koin Configuration Check
 w: Kapt currently doesn't support language version 2.0+. Falling back to 1.9.
 
 > Task :app:kaptDebugKotlin UP-TO-DATE
+
 > Task :app:compileDebugKotlin
+w: file:///D:/VIKI%20COLLEGE%20WORKS/EDUVISION%20FINAL/eduvision-final/Vish-EduVision(1.2.26)-v2/OnDevice-Face-Recognition-Android/app/src/main/java/com/ml/shubham0204/facenet_android/presentation/components/FaceDetectionOverlay.kt:96:26 '@Deprecated(...) @NonNull() fun setTargetAspectRatio(p0: Int): ImageAnalysis.Builder' is deprecated. Deprecated in Java.
+
 > Task :app:compileDebugJavaWithJavac UP-TO-DATE
 > Task :app:processDebugJavaRes UP-TO-DATE
 > Task :app:mergeDebugJavaResource UP-TO-DATE
@@ -53,5 +56,5 @@ w: Kapt currently doesn't support language version 2.0+. Falling back to 1.9.
 > Task :app:createDebugApkListingFileRedirect UP-TO-DATE
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 4s
+BUILD SUCCESSFUL in 15s
 41 actionable tasks: 7 executed, 34 up-to-date
