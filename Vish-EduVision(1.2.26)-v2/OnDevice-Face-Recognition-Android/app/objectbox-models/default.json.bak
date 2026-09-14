@@ -38,7 +38,7 @@
     },
     {
       "id": "2:5724033975412775664",
-      "lastPropertyId": "5:6214334937147888472",
+      "lastPropertyId": "7:8216125998210209069",
       "name": "PersonRecord",
       "properties": [
         {
@@ -61,13 +61,64 @@
           "id": "5:6214334937147888472",
           "name": "addTime",
           "type": 6
+        },
+        {
+          "id": "6:4592805685012943098",
+          "name": "studentClass",
+          "type": 9
+        },
+        {
+          "id": "7:8216125998210209069",
+          "name": "rollNumber",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:4314915301581714600",
+      "lastPropertyId": "6:4201743360891519228",
+      "name": "AttendanceRecord",
+      "properties": [
+        {
+          "id": "1:6732050319679877920",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:8358635604279651543",
+          "name": "studentId",
+          "indexId": "3:1188666156147938985",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:5041403636378849089",
+          "name": "date",
+          "type": 6
+        },
+        {
+          "id": "4:6163475328490678050",
+          "name": "timestamp",
+          "type": 6
+        },
+        {
+          "id": "5:1701130810548060199",
+          "name": "isPresent",
+          "type": 1
+        },
+        {
+          "id": "6:4201743360891519228",
+          "name": "studentClass",
+          "type": 9
         }
       ],
       "relations": []
     }
   ],
-  "lastEntityId": "2:5724033975412775664",
-  "lastIndexId": "2:1210613089703466990",
+  "lastEntityId": "3:4314915301581714600",
+  "lastIndexId": "3:1188666156147938985",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

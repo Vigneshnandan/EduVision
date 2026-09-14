@@ -48,6 +48,23 @@ class AttendanceUseCase {
         }
     }
 
+    suspend fun getAllAttendanceForDate(date: Long): List<AttendanceRecord> {
+        return withContext(Dispatchers.IO) {
+            attendanceBox.query(AttendanceRecord_.date.equal(date)).build().find()
+        }
+    }
+
+    /**
+     * Counts attendance records marked after [timestamp] — used to show a
+     * "pending sync" count without any ObjectBox schema changes, by simply
+     * comparing against the last-successful-sync time stored separately.
+     */
+    suspend fun countPendingSince(timestamp: Long): Long {
+        return withContext(Dispatchers.IO) {
+            attendanceBox.query(AttendanceRecord_.timestamp.greater(timestamp)).build().count()
+        }
+    }
+
     private fun getTodayTimestamp(): Long {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)

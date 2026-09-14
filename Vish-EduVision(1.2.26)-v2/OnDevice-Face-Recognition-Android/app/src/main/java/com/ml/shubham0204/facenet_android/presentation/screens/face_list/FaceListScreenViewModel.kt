@@ -7,7 +7,7 @@ import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel
 class FaceListScreenViewModel(
-    val imageVectorUseCase: ImageVectorUseCase,
+    val imageVectorUseCase: Lazy<ImageVectorUseCase>,
     val personUseCase: PersonUseCase,
 ) : ViewModel() {
     val personFlow = personUseCase.getAll()
@@ -16,6 +16,6 @@ class FaceListScreenViewModel(
     // and all associated face embeddings from `FaceImageRecord`
     fun removeFace(id: Long) {
         personUseCase.removePerson(id)
-        imageVectorUseCase.removeImages(id)
+        imageVectorUseCase.value.removeImages(id)
     }
 }

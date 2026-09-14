@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import kotlin.OptIn
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,14 +20,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Class
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.OfflineBolt
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -54,22 +65,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import com.ml.shubham0204.facenet_android.R
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
+import com.ml.shubham0204.facenet_android.presentation.components.AppLogoLockup
+import com.ml.shubham0204.facenet_android.presentation.components.CameraAccessScreen
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
 import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionOverlay
+import com.ml.shubham0204.facenet_android.presentation.components.StatusPill
 import com.ml.shubham0204.facenet_android.presentation.components.createAlertDialog
-import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -100,42 +117,42 @@ fun DetectScreen(onOpenFaceListClick: (() -> Unit), onAttendanceEnd: (String, Lo
         }
     }
 
-    FaceNetAndroidTheme {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = Color.White,
-            topBar = {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color.White,
+        topBar = {
+            // ClassSelectionScreen renders its own "Take Attendance" header,
+            // so only show the system app bar once attendance is in progress.
+            if (isClassSelected) {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
                         Text(
-                            text = if (isClassSelected) "Attendance: $className" else "Enter Class",
+                            text = "Attendance: $className",
                             style = MaterialTheme.typography.headlineSmall,
                         )
                     },
                     actions = {
-                        if (isClassSelected) {
-                            Button(onClick = { onAttendanceEnd(className, viewModel.attendanceDate.value) }) {
-                                Text("End Attendance")
-                            }
+                        Button(onClick = { onAttendanceEnd(className, viewModel.attendanceDate.value) }) {
+                            Text("End Attendance")
                         }
                     },
                 )
-            },
-        ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) {
-                if (!isClassSelected) {
-                    ClassSelectionScreen(
-                        viewModel = viewModel,
-                        onClassSelected = { enteredClass ->
-                            className = enteredClass
-                            viewModel.setClass(enteredClass)
-                            isClassSelected = true
-                        }
-                    )
-                } else {
-                    ScreenUI(viewModel)
-                }
+            }
+        },
+    ) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            if (!isClassSelected) {
+                ClassSelectionScreen(
+                    viewModel = viewModel,
+                    onClassSelected = { enteredClass ->
+                        className = enteredClass
+                        viewModel.setClass(enteredClass)
+                        isClassSelected = true
+                    }
+                )
+            } else {
+                ScreenUI(viewModel)
             }
         }
     }
@@ -182,118 +199,197 @@ fun ClassSelectionScreen(viewModel: DetectScreenViewModel, onClassSelected: (Str
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Instructions Card
+        // Header: title + "Works Offline" status pill
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Take Attendance",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color.Black,
+                modifier = Modifier.weight(1f),
+            )
+            StatusPill(
+                text = "Works Offline / On-device AI",
+                icon = Icons.Filled.OfflineBolt,
+                containerColor = Color(0xFFE8F5E9),
+                contentColor = Color(0xFF2E7D32),
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Brand lockup + small teacher-and-students illustration
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AppLogoLockup(modifier = Modifier.weight(1f))
+            TeacherStudentsIllustration()
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // "Ready to take attendance?" card
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = Color(0xFFE1F5FE)),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Ready to take attendance?",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.Black,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "Select your class, position the camera, and let Edu Vision " +
+                            "automatically detect and mark attendance for each student.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                FaceDetectionIllustration()
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // "How it works" card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Instructions",
+                    "How it works",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.Black // Ensuring Black Text
+                    color = Color.Black,
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                InstructionItem("1. Select the Class from the dropdown.")
-                InstructionItem("2. Ensure good lighting for the camera.")
-                InstructionItem("3. Point camera at students one by one.")
-                InstructionItem("4. Verify 'Marked Present' toast message.")
+                Spacer(modifier = Modifier.height(16.dp))
+                HowItWorksRow()
             }
         }
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        Text("Attendance Settings", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.Black)
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Date Display
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = currentDate,
-                onValueChange = {},
-                label = { Text("Date") },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                leadingIcon = { Icon(Icons.Default.DateRange, null, tint = Color.Black) },
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black,
-                    disabledTextColor = Color.Black,
-                    disabledLabelColor = Color.Black, // Ensure label stays visible
-                    disabledBorderColor = Color.Gray,
-                    disabledLeadingIconColor = Color.Black
-                ),
-                enabled = false // Disable editing, rely on overlay for click
-            )
-            // Transparent overlay for click
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable { showDatePicker = true }
-            )
-        }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Class Dropdown
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
+        // Attendance Settings card (Date + Class — same state/logic, restyled)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
         ) {
-            OutlinedTextField(
-                value = selectedClass,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("Select Class") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                leadingIcon = { Icon(Icons.Default.Class, null) },
-                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    "Attendance Settings",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black,
                 )
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = Modifier.background(Color.White)
-            ) {
-                if (classes.isEmpty()) {
-                    DropdownMenuItem(
-                        text = { Text("No classes found", color = Color.Black) },
-                        onClick = { expanded = false }
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Date Display
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = currentDate,
+                        onValueChange = {},
+                        label = { Text("Date") },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.DateRange, null, tint = Color.Black) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black,
+                            disabledTextColor = Color.Black,
+                            disabledLabelColor = Color.Black, // Ensure label stays visible
+                            disabledBorderColor = Color.Gray,
+                            disabledLeadingIconColor = Color.Black
+                        ),
+                        enabled = false // Disable editing, rely on overlay for click
                     )
-                } else {
-                    classes.forEach { classItem ->
-                        DropdownMenuItem(
-                            text = { Text(classItem, color = Color.Black) },
-                            onClick = {
-                                selectedClass = classItem
-                                expanded = false
-                            }
+                    // Transparent overlay for click
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable { showDatePicker = true }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Class Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = selectedClass,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Select Class") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        leadingIcon = { Icon(Icons.Default.Class, null) },
+                        modifier = Modifier.menuAnchor().fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.Black,
+                            unfocusedTextColor = Color.Black
                         )
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.background(Color.White)
+                    ) {
+                        if (classes.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("No classes found", color = Color.Black) },
+                                onClick = { expanded = false }
+                            )
+                        } else {
+                            classes.forEach { classItem ->
+                                DropdownMenuItem(
+                                    text = { Text(classItem, color = Color.Black) },
+                                    onClick = {
+                                        selectedClass = classItem
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
-        
+        Spacer(modifier = Modifier.height(24.dp))
+
         Button(
             onClick = { if (selectedClass.isNotEmpty()) onClassSelected(selectedClass) },
             modifier = Modifier.fillMaxWidth().height(50.dp),
             enabled = selectedClass.isNotEmpty(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color(0xFF29B6F6),
-                disabledContainerColor = Color(0xFFB3E5FC),
-                contentColor = Color.White
+                disabledContainerColor = Color(0xFFE0E0E0),
+                contentColor = Color.White,
+                disabledContentColor = Color(0xFF9E9E9E),
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -301,14 +397,174 @@ fun ClassSelectionScreen(viewModel: DetectScreenViewModel, onClassSelected: (Str
             Spacer(modifier = Modifier.width(8.dp))
             Text("Live Attendance", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Footer
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Shield,
+                contentDescription = null,
+                tint = Color.Gray,
+                modifier = Modifier.size(14.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                "All processing happens on your device. No internet required.",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray,
+            )
+        }
     }
 }
 
 @Composable
-fun InstructionItem(text: String) {
-    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text("• ", fontWeight = FontWeight.Bold, color = Color.Black)
-        Text(text, style = MaterialTheme.typography.bodyMedium, color = Color.Black)
+private fun TeacherStudentsIllustration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.size(56.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(Color(0xFFE1F5FE), RoundedCornerShape(16.dp)),
+        )
+        Icon(
+            imageVector = Icons.Filled.Groups,
+            contentDescription = null,
+            tint = Color(0xFF0288D1),
+            modifier = Modifier.size(30.dp),
+        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(20.dp)
+                .background(Color(0xFF29B6F6), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun FaceDetectionIllustration(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(64.dp)
+            .cornerBrackets(color = Color(0xFF29B6F6)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Face,
+            contentDescription = null,
+            tint = Color(0xFF0288D1),
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+private fun Modifier.cornerBrackets(
+    color: Color,
+    strokeWidthDp: Dp = 3.dp,
+    cornerLengthDp: Dp = 14.dp,
+): Modifier = this.drawBehind {
+    val strokeWidthPx = strokeWidthDp.toPx()
+    val cornerLengthPx = cornerLengthDp.toPx()
+    val w = size.width
+    val h = size.height
+    // Top-left
+    drawLine(color, Offset(0f, 0f), Offset(cornerLengthPx, 0f), strokeWidthPx)
+    drawLine(color, Offset(0f, 0f), Offset(0f, cornerLengthPx), strokeWidthPx)
+    // Top-right
+    drawLine(color, Offset(w, 0f), Offset(w - cornerLengthPx, 0f), strokeWidthPx)
+    drawLine(color, Offset(w, 0f), Offset(w, cornerLengthPx), strokeWidthPx)
+    // Bottom-left
+    drawLine(color, Offset(0f, h), Offset(cornerLengthPx, h), strokeWidthPx)
+    drawLine(color, Offset(0f, h), Offset(0f, h - cornerLengthPx), strokeWidthPx)
+    // Bottom-right
+    drawLine(color, Offset(w, h), Offset(w - cornerLengthPx, h), strokeWidthPx)
+    drawLine(color, Offset(w, h), Offset(w, h - cornerLengthPx), strokeWidthPx)
+}
+
+@Composable
+private fun HowItWorksRow() {
+    val steps = listOf(
+        Triple(1, Icons.Filled.Class, "Select class"),
+        Triple(2, Icons.Filled.CameraAlt, "Position camera"),
+        Triple(3, Icons.Filled.Face, "Detect faces"),
+        Triple(4, Icons.Filled.CheckCircle, "Marked automatically"),
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        steps.forEachIndexed { index, (number, icon, label) ->
+            HowItWorksStep(
+                number = number,
+                icon = icon,
+                label = label,
+                modifier = Modifier.weight(1f),
+            )
+            if (index != steps.lastIndex) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = Color.LightGray,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HowItWorksStep(
+    number: Int,
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color(0xFFE1F5FE), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color(0xFF0288D1),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "$number",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color(0xFF0288D1),
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.Black,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }
 
@@ -387,22 +643,10 @@ private fun Camera(viewModel: DetectScreenViewModel) {
         )
     }
     DelayedVisibility(!cameraPermissionStatus.value) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                "Allow Camera Permissions\nThe app cannot work without the camera permission.",
-                textAlign = TextAlign.Center,
-            )
-            Button(
-                onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-            ) {
-                Text(text = "Allow")
-            }
-        }
+        CameraAccessScreen(
+            onAllowClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
+            onNotNowClick = { /* Stay on this screen; no camera preview until permission is granted */ },
+        )
     }
 }
 

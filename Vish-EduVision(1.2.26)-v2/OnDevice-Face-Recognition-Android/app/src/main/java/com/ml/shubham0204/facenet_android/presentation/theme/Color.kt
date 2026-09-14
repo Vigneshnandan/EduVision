@@ -2,9 +2,9 @@ package com.ml.shubham0204.facenet_android.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
-val primaryLight = Color(0xFF004DA6)
+val primaryLight = Color(0xFF29B6F6)
 val onPrimaryLight = Color(0xFFFFFFFF)
-val primaryContainerLight = Color(0xFF2771DF)
+val primaryContainerLight = Color(0xFF0288D1)
 val onPrimaryContainerLight = Color(0xFFFFFFFF)
 val secondaryLight = Color(0xFF4B5E88)
 val onSecondaryLight = Color(0xFFFFFFFF)
