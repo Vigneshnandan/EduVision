@@ -124,6 +124,9 @@ dependencies {
     // Cloud Sync
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Encrypted Session Storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 
 apply(plugin = "io.objectbox")

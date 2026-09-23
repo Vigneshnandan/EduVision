@@ -16,6 +16,11 @@ data class SchoolRecordDto(
     @SerializedName("address") val address: String? = null
 )
 
+data class SchoolsResult(
+    val schools: List<SchoolRecordDto>,
+    val isFromCache: Boolean
+)
+
 data class SupabaseSignUpRequest(
     @SerializedName("email") val email: String,
     @SerializedName("password") val password: String,

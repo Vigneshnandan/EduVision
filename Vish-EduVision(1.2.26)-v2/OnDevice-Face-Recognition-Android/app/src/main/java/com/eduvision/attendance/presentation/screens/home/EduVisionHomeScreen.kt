@@ -1,3 +1,10 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
 package com.eduvision.attendance.presentation.screens.home
 
 import androidx.compose.foundation.BorderStroke
@@ -13,6 +20,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiOff
@@ -20,7 +28,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +61,54 @@ fun EduVisionHomeScreen(
     val presentToday by remember { viewModel.presentToday }
     val recentRegistrationActivity by remember { viewModel.recentRegistrationActivity }
     val recentAttendanceActivity by remember { viewModel.recentAttendanceActivity }
+
+    var showRegistrationLockDialog by remember { mutableStateOf(false) }
+
+    if (showRegistrationLockDialog) {
+        AlertDialog(
+            onDismissRequest = { showRegistrationLockDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = Color(0xFF2E7D32),
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Student Registration",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black
+                )
+            },
+            text = {
+                Text(
+                    "Student biometric enrollment is an administrative setup action. Are you sure you want to proceed to registration?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.DarkGray
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRegistrationLockDialog = false
+                        onNavigateToRegistration()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32))
+                ) {
+                    Text("Proceed", color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRegistrationLockDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
 
     val attendancePercent = if (totalStudents > 0) (presentToday * 100 / totalStudents) else 0
 
@@ -195,7 +253,8 @@ fun EduVisionHomeScreen(
                     label = "Student Registration",
                     iconContainerColor = Color(0xFFE8F5E9),
                     iconTint = Color(0xFF2E7D32),
-                    onClick = onNavigateToRegistration,
+                    isLocked = true,
+                    onClick = { showRegistrationLockDialog = true },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -271,6 +330,7 @@ private fun QuickActionCard(
     iconTint: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isLocked: Boolean = false,
 ) {
     Card(
         modifier = modifier
@@ -287,13 +347,34 @@ private fun QuickActionCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(iconContainerColor, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(iconContainerColor, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(imageVector = icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
+                }
+                if (isLocked) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .background(Color(0xFFF1F8E9), RoundedCornerShape(6.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Admin Restricted",
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
             }
             Text(
                 label,

@@ -236,11 +236,11 @@ NavHost(navController = navHostController, startDestination = startDestination, 
 - `EduVisionHomeScreen`'s "lock" icon on Student Registration (from the sketch): gate `onNavigateToRegistration` behind a role check (e.g., only allow if the logged-in teacher's role/permission flag allows adding students) or behind being online, per whatever the lock was meant to signal — **needs a decision from the user** on which condition the lock represents (see Open Questions, §6).
 
 **Deliverables checklist — Phase 3**
-- [ ] `LoginScreen` + ViewModel
-- [ ] `RegisterScreen` + ViewModel (with school dropdown, pre-fetched)
-- [ ] Session storage (DataStore/EncryptedSharedPreferences), no plaintext passwords
-- [ ] `MainActivity` nav gating on session state
-- [ ] Decision + implementation of what the "lock" on Student Registration means
+- [x] `LoginScreen` + ViewModel
+- [x] `RegisterScreen` + ViewModel (with school dropdown, pre-fetched)
+- [x] Session storage (DataStore/EncryptedSharedPreferences), no plaintext passwords
+- [x] `MainActivity` nav gating on session state
+- [x] Decision + implementation of what the "lock" on Student Registration means
 
 ---
 

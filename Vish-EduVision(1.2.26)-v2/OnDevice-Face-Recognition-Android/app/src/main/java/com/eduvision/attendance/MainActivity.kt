@@ -12,15 +12,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.eduvision.attendance.data.auth.AuthRepository
 import com.eduvision.attendance.presentation.screens.add_face.AddFaceScreen
+import com.eduvision.attendance.presentation.screens.auth.LoginScreen
+import com.eduvision.attendance.presentation.screens.auth.RegisterScreen
 import com.eduvision.attendance.presentation.screens.detect_screen.DetectScreen
 import com.eduvision.attendance.presentation.screens.face_list.FaceListScreen
 import com.eduvision.attendance.presentation.screens.home.EduVisionHomeScreen
 import com.eduvision.attendance.presentation.screens.result.AttendanceResultScreen
 import com.eduvision.attendance.presentation.screens.log.AttendanceLogScreen
 import com.eduvision.attendance.presentation.theme.EduVisionTheme
+import org.koin.android.ext.android.inject
 
 class MainActivity : ComponentActivity() {
+
+    private val authRepository: AuthRepository by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -31,12 +38,38 @@ class MainActivity : ComponentActivity() {
         setContent {
             EduVisionTheme {
                 val navHostController = rememberNavController()
+                val startDestination = if (authRepository.hasValidSession()) "home" else "login"
+
                 NavHost(
                     navController = navHostController,
-                    startDestination = "home",
+                    startDestination = startDestination,
                     enterTransition = { fadeIn() },
                     exitTransition = { fadeOut() },
                 ) {
+                    composable("login") {
+                        LoginScreen(
+                            onLoginSuccess = {
+                                navHostController.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onNavigateToRegister = {
+                                navHostController.navigate("register")
+                            }
+                        )
+                    }
+                    composable("register") {
+                        RegisterScreen(
+                            onRegisterSuccess = {
+                                navHostController.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            onNavigateBack = {
+                                navHostController.navigateUp()
+                            }
+                        )
+                    }
                     composable("home") {
                         EduVisionHomeScreen(
                             onNavigateToRegistration = { navHostController.navigate("add-face") },
