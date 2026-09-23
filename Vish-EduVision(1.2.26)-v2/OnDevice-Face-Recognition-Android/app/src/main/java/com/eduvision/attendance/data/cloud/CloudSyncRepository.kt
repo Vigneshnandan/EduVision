@@ -12,6 +12,8 @@ import com.eduvision.attendance.data.PersonRecord
 import com.eduvision.attendance.data.PersonRecord_
 import com.eduvision.attendance.domain.AttendanceUseCase
 import com.eduvision.attendance.domain.PersonUseCase
+import com.eduvision.attendance.BuildConfig
+import com.eduvision.attendance.data.auth.EncryptedSessionStore
 import io.objectbox.Box
 import io.objectbox.BoxStore
 import kotlinx.coroutines.Dispatchers
@@ -24,19 +26,28 @@ import com.eduvision.attendance.data.ObjectBoxStore
 @Single
 class CloudSyncRepository(
     private val attendanceUseCase: AttendanceUseCase,
-    private val personUseCase: PersonUseCase
+    private val personUseCase: PersonUseCase,
+    private val encryptedSessionStore: EncryptedSessionStore
 ) {
     private val boxStore = ObjectBoxStore.store
-    // Correct Supabase REST API URL derived from your project ID
-    private val BASE_URL = "https://dvtsxuesvokpdcmtocjl.supabase.co" 
-    private val API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dHN4dWVzdm9rcGRjbXRvY2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5MzI2OTAsImV4cCI6MjA4NTUwODY5MH0.eA4gLo10-Jttq6vFSvSPrXRfe8Q38g8UJ6v3xn7HoIM"
+
+    // Sourced securely from local.properties via BuildConfig — never hardcoded in source control
+    private val BASE_URL = BuildConfig.SUPABASE_URL
+    private val API_KEY = BuildConfig.SUPABASE_ANON_KEY
 
     private val api: CloudSyncService by lazy {
         val client = okhttp3.OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val sessionToken = encryptedSessionStore.getSessionToken()
+                val authHeader = if (!sessionToken.isNullOrBlank()) {
+                    "Bearer $sessionToken"
+                } else {
+                    "Bearer $API_KEY"
+                }
+
                 val request = chain.request().newBuilder()
                     .addHeader("apikey", API_KEY)
-                    .addHeader("Authorization", "Bearer $API_KEY")
+                    .addHeader("Authorization", authHeader)
                     .addHeader("Content-Type", "application/json")
                     .build()
                 chain.proceed(request)
@@ -74,11 +85,17 @@ class CloudSyncRepository(
     }
 
     /**
-     * Flushes any pending student registrations queued while offline.
+     * Flushes any pending student registrations queued while offline,
+     * optionally filtered to a specific school_id.
      */
-    suspend fun syncPendingStudents(): Result<Int> = withContext(Dispatchers.IO) {
+    suspend fun syncPendingStudents(targetSchoolId: String? = null): Result<Int> = withContext(Dispatchers.IO) {
         try {
-            val pendingStudents = personUseCase.getPendingSyncStudents()
+            val allPending = personUseCase.getPendingSyncStudents()
+            val pendingStudents = if (!targetSchoolId.isNullOrBlank()) {
+                allPending.filter { it.schoolId == targetSchoolId }
+            } else {
+                allPending
+            }
             if (pendingStudents.isEmpty()) {
                 return@withContext Result.success(0)
             }
@@ -108,10 +125,19 @@ class CloudSyncRepository(
         }
     }
 
+    /**
+     * Scopes attendance push strictly to the logged-in teacher's school_id,
+     * preventing cross-school data leakage.
+     */
     suspend fun syncAttendance(): Result<String> = withContext(Dispatchers.IO) {
         try {
-            // Also flush pending student registration records if any
-            syncPendingStudents()
+            val currentSchoolId = encryptedSessionStore.getSchoolId()
+            if (currentSchoolId.isNullOrBlank()) {
+                return@withContext Result.failure(IllegalStateException("No authenticated teacher or school found in active session"))
+            }
+
+            // Also flush pending student registration records for this school
+            syncPendingStudents(currentSchoolId)
 
             val attendanceBox = boxStore.boxFor(AttendanceRecord::class.java)
             val personBox = boxStore.boxFor(PersonRecord::class.java)
@@ -121,9 +147,10 @@ class CloudSyncRepository(
                 return@withContext Result.success("No records to sync")
             }
 
+            // Scope push to the logged-in teacher's school_id only
             val cloudRecords = allAttendance.mapNotNull { attendance ->
                 val person = personBox.get(attendance.studentId)
-                if (person != null) {
+                if (person != null && person.schoolId == currentSchoolId) {
                     CloudAttendanceRecord(
                         studentId = person.personID,
                         name = person.personName,
@@ -134,7 +161,7 @@ class CloudSyncRepository(
                         timestamp = attendance.timestamp,
                         isManual = attendance.isManual,
                         markedBy = attendance.markedByTeacherId.ifEmpty { null },
-                        schoolId = person.schoolId.ifEmpty { null }
+                        schoolId = currentSchoolId
                     )
                 } else {
                     null
@@ -142,12 +169,12 @@ class CloudSyncRepository(
             }
 
             if (cloudRecords.isEmpty()) {
-                return@withContext Result.success("No valid records to sync (students missing?)")
+                return@withContext Result.success("No records to sync for school $currentSchoolId")
             }
 
             api.pushAttendanceRecords(cloudRecords)
             
-            Result.success("Synced ${cloudRecords.size} records successfully")
+            Result.success("Synced ${cloudRecords.size} records successfully for school $currentSchoolId")
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(e)

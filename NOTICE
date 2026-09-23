@@ -1,17 +1,22 @@
 EduVision
-Copyright © 2026 EduVision. All rights reserved.
-
-[DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
+Copyright © 2026 [Legal entity name once incorporated]
 
 This product includes software developed by third parties, including but
 not limited to:
 
 - OnDevice-Face-Recognition-Android (shubham0204) — Apache License 2.0
 - MiniFASNet / Silent-Face-Anti-Spoofing (MiniVision) — Apache License 2.0
-- DeepFace-related components — MIT License
-- Google MediaPipe — Apache License 2.0 (framework); model asset terms
-  verified separately, see /MODEL_LICENSES
+- Google MediaPipe (framework & BlazeFace detector) — Apache License 2.0
 - Google ML Kit — subject to Google APIs / ML Kit Terms of Service
+- DeepFace-related conversion tooling — MIT License
 
-See /THIRD_PARTY_LICENSES for the full dependency list and
-/MODEL_LICENSES for model-specific provenance and licensing.
+Notice Regarding Pre-Trained Neural Network Models:
+- blaze_face_short_range.tflite is distributed under the Apache License 2.0.
+- spoof_model_scale_2_7.tflite and spoof_model_scale_4_0.tflite are distributed under
+  the Apache License 2.0.
+- facenet.tflite and facenet_512.tflite contain weights trained on academic-only
+  datasets (CASIA-WebFace and VGGFace2) and are strictly limited to non-commercial
+  internal testing. They must be replaced prior to commercial release.
+
+See /THIRD_PARTY_LICENSES for the full transitive dependency list and
+/MODEL_LICENSES for comprehensive model-specific provenance and licensing terms.

@@ -1,37 +1,62 @@
 [DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
 
+# EduVision Machine Learning Models Provenance & Licensing Inventory
+
+This document details the source, training dataset lineage, license terms, and commercial
+viability of all binary machine learning model assets distributed with EduVision.
+
+---
+
+## 1. Face Recognition Embeddings (P0 Blockers)
+
 Model: FaceNet (128-d)
 Filename: facenet.tflite
-Original Source: VERIFY MANUALLY
-License: VERIFY MANUALLY
-Commercial Use: VERIFY MANUALLY
-Redistribution: VERIFY MANUALLY
-Provenance Status: UNVERIFIED — P0 blocker
+Binary Hash: SHA256 6c0c04cc395609ad1b12932592cb506879bb78ff1a8fc7efe2e64c51216507ea
+Input / Output: [1, 160, 160, 3] -> [1, 128]
+Architecture: Inception-ResNet-v1
+Lineage: shubham0204 TFLite conversion <- nyoki-mtl/keras-facenet <- davidsandberg/facenet (20170512-110547)
+Training Dataset: CASIA-WebFace (Institute of Automation, Chinese Academy of Sciences)
+Dataset Terms: Strictly non-commercial and academic research use only.
+Commercial Status: FATAL P0 COMMERCIAL BLOCKER.
+Action Required: MUST NOT be distributed in a commercial product. Must be replaced with
+                 commercially licensed models (e.g., InsightFace MobileFaceNet trained on MS1MV2/Glint360k with commercial license, or a proprietary trained checkpoint).
 
 Model: FaceNet (512-d)
 Filename: facenet_512.tflite
-Original Source: VERIFY MANUALLY
-License: VERIFY MANUALLY
-Commercial Use: VERIFY MANUALLY
-Redistribution: VERIFY MANUALLY
-Provenance Status: UNVERIFIED — P0 blocker
+Binary Hash: SHA256 f0dede2fdf5fd10248aad1d85393d2d40e3494464440bd8fccb2c957baa430b7
+Input / Output: [1, 160, 160, 3] -> [1, 512]
+Architecture: Inception-ResNet-v1
+Lineage: shubham0204 TFLite conversion <- nyoki-mtl/keras-facenet <- davidsandberg/facenet (20180402-114759 / 20180408-102900)
+Training Dataset: VGGFace2 (Visual Geometry Group, University of Oxford)
+Dataset Terms: Strictly non-commercial research purposes only.
+Commercial Status: FATAL P0 COMMERCIAL BLOCKER.
+Action Required: MUST NOT be distributed in a commercial product. Must be replaced prior
+                 to commercial distribution.
+
+---
+
+## 2. Anti-Spoofing & Liveness Detection (Cleared)
 
 Model: MiniFASNet anti-spoofing (scale 2.7)
 Filename: spoof_model_scale_2_7.tflite
-Original Source: Silent-Face-Anti-Spoofing / MiniVision
+Original Source: Silent-Face-Anti-Spoofing (MiniVision)
 License: Apache License 2.0
-Commercial Use: Permitted
-Notes: Converted via DeepFace + AI Edge Torch tooling; preserve existing
-       in-code attribution comments
+Commercial Use: Permitted subject to Apache 2.0 obligations (attribution notices retained).
 
 Model: MiniFASNet anti-spoofing (scale 4.0)
 Filename: spoof_model_scale_4_0.tflite
-Original Source: Silent-Face-Anti-Spoofing / MiniVision
+Original Source: Silent-Face-Anti-Spoofing (MiniVision)
 License: Apache License 2.0
-Commercial Use: Permitted
+Commercial Use: Permitted subject to Apache 2.0 obligations (attribution notices retained).
 
-Model: BlazeFace (short range)
+---
+
+## 3. Face Detection (Cleared)
+
+Model: BlazeFace (short range frontal)
 Filename: blaze_face_short_range.tflite
-Original Source: Google MediaPipe
-License: Framework is Apache-2.0; exact model-asset redistribution terms VERIFY MANUALLY
-Provenance Status: Framework confirmed, asset terms pending — P0 blocker
+Binary Hash: SHA256 b4578f7e8a946cf659d8cfa99d554a7f053535d4ff3a69a91a92e1069bce545e
+Original Source: Google MediaPipe / Google Research (AIMatter)
+Training Data: Google Research frontal anchors + WIDER FACE benchmark
+License: Apache License 2.0
+Commercial Use: Permitted under Apache 2.0 with attribution in /NOTICE.

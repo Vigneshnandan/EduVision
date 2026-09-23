@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import org.koin.core.annotation.Single
 import retrofit2.Retrofit
+import com.eduvision.attendance.BuildConfig
 import retrofit2.converter.gson.GsonConverterFactory
 
 @Single
@@ -28,9 +29,9 @@ class AuthRepository(
     private val teacherBox = boxStore.boxFor(TeacherRecord::class.java)
     private val gson = Gson()
 
-    // Supabase project endpoints - will be moved to BuildConfig in Phase 7 hardening
-    private val baseUrl = "https://dvtsxuesvokpdcmtocjl.supabase.co"
-    private val apiKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2dHN4dWVzdm9rcGRjbXRvY2psIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5MzI2OTAsImV4cCI6MjA4NTUwODY5MH0.eA4gLo10-Jttq6vFSvSPrXRfe8Q38g8UJ6v3xn7HoIM"
+    // Sourced securely from local.properties via BuildConfig — never hardcoded in source control
+    private val baseUrl = BuildConfig.SUPABASE_URL
+    private val apiKey = BuildConfig.SUPABASE_ANON_KEY
 
     private val authService: AuthService by lazy {
         val client = OkHttpClient.Builder()

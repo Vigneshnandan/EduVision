@@ -304,9 +304,9 @@ Not in the original sketch, but directly triggered by the fact that Phases 1–6
 - `CloudSyncRepository.syncAttendance()` currently pushes **all** local records every sync; once records carry a `school_id`, filter to the logged-in teacher's school so one device never leaks another school's data even if the API key were reused across schools.
 
 **Deliverables checklist — Phase 7**
-- [ ] API key moved out of source control
-- [ ] RLS policies scoped by authenticated school/teacher
-- [ ] Sync payload scoped to current teacher's school
+- [x] API key moved out of source control
+- [x] RLS policies scoped by authenticated school/teacher
+- [x] Sync payload scoped to current teacher's school
 
 ---
 
@@ -509,16 +509,16 @@ Also review and remove/update as appropriate: `CHANGELOG.md`, `.github/FUNDING.y
 - [x] `/NOTICE` created
 - [x] `/THIRD_PARTY_LICENSES` created
 - [x] `/MODEL_LICENSES` created
-- [ ] FaceNet model provenance verified
-- [ ] FaceNet training-data/redistribution restrictions verified
-- [ ] BlazeFace model-asset terms verified
-- [ ] Current Google ML Kit terms reviewed against shipped SDK version
-- [ ] Full transitive dependency license scan run (Android + Dashboard)
-- [ ] Upstream Apache-2.0 notices preserved
+- [x] FaceNet model provenance verified
+- [x] FaceNet training-data/redistribution restrictions verified
+- [x] BlazeFace model-asset terms verified
+- [x] Current Google ML Kit terms reviewed against shipped SDK version
+- [x] Full transitive dependency license scan run (Android + Dashboard)
+- [x] Upstream Apache-2.0 notices preserved
 - [x] Upstream package/product identity rebranded
 - [x] Obsolete upstream funding/release-workflow references cleaned up
-- [ ] EduVision copyright headers added (existing + new files)
-- [ ] EduVision-vs-third-party IP documented (this file + `/NOTICE` serve that purpose)
+- [x] EduVision copyright headers added (existing + new files)
+- [x] EduVision-vs-third-party IP documented (this file + `/NOTICE` serve that purpose)
 - [ ] Founder/team IP assignments executed post-incorporation
 - [ ] Model/dependency provenance records maintained going forward
 - [ ] In-app "Open Source Licenses" screen added
