@@ -16,11 +16,14 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
 
+import com.eduvision.attendance.domain.AttendanceDraftUseCase
+
 @KoinViewModel
 class DetectScreenViewModel(
     val personUseCase: PersonUseCase,
     val imageVectorUseCase: ImageVectorUseCase,
     val attendanceUseCase: AttendanceUseCase,
+    val attendanceDraftUseCase: AttendanceDraftUseCase,
     val settingsStore: SettingsStore
 ) : ViewModel() {
     var studentClass: String = ""
@@ -42,16 +45,20 @@ class DetectScreenViewModel(
     fun setClass(className: String) {
         studentClass = className
         subsetPersonIDs = personUseCase.getPersonIDsByClass(className)
+        attendanceDraftUseCase.startSession(className, attendanceDate.value)
     }
     
     fun setDate(date: Long) {
         attendanceDate.value = date
+        if (studentClass.isNotEmpty()) {
+            attendanceDraftUseCase.startSession(studentClass, date)
+        }
     }
 
     fun markAttendance(personId: Long, name: String) {
         viewModelScope.launch {
-            // Use the selected date
-            if (attendanceUseCase.markAttendance(personId, studentClass, attendanceDate.value)) {
+            // Stage recognized student in in-memory draft; do not write to DB yet
+            if (attendanceDraftUseCase.markPresent(personId)) {
                 _attendanceMessages.emit("Marked Present: $name")
             } else {
                 _attendanceMessages.emit("Already Marked: $name")

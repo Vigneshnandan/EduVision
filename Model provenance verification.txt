@@ -1,0 +1,119 @@
+Model Provenance & Commercial Licensing Verification Report
+Target Scope: Track B P0 Items (§B0, §B1.3, §B1.4)
+Binary Assets Analyzed:
+
+app/src/main/assets/facenet.tflite
+app/src/main/assets/facenet_512.tflite
+app/src/main/assets/blaze_face_short_range.tflite
+1. Executive Summary
+Model File	Checkpoint & Architecture Lineage	Training Dataset Lineage	Commercial Status	Verdict
+facenet.tflite (128-d)	Inception-ResNet-v1 via shubham0204 ← nyoki-mtl/keras-facenet ← davidsandberg/facenet (20170512-110547)	CASIA-WebFace (10,575 subjects, 494k images)	STRICTLY NON-COMMERCIAL / ACADEMIC ONLY	FATAL P0 COMMERCIAL BLOCKER (Cannot ship in commercial release)
+facenet_512.tflite (512-d)	Inception-ResNet-v1 via shubham0204 ← nyoki-mtl/keras-facenet ← davidsandberg/facenet (20180402-114759 / 20180408-102900)	VGGFace2 (9,131 subjects, 3.31M images)	STRICTLY NON-COMMERCIAL / RESEARCH ONLY	FATAL P0 COMMERCIAL BLOCKER (Cannot ship in commercial release)
+blaze_face_short_range.tflite	BlazeFace (short-range frontal detector, 128x128 input) via Google MediaPipe / Google Research (AIMatter)	Custom Google Research anchor dataset + WIDER FACE benchmark	PERMITTED UNDER APACHE-2.0	CLEARED (Requires Apache 2.0 attribution in /NOTICE)
+2. Deep Dive: facenet.tflite & facenet_512.tflite
+2.1 Binary Metadata & Hashes
+text
+File: facenet.tflite
+Size: 45,681,624 bytes (43.56 MB)
+SHA256: 6c0c04cc395609ad1b12932592cb506879bb78ff1a8fc7efe2e64c51216507ea
+Input Tensor:  [1, 160, 160, 3] (float32)
+Output Tensor: [1, 128] (float32)
+File: facenet_512.tflite
+Size: 47,058,600 bytes (44.88 MB)
+SHA256: f0dede2fdf5fd10248aad1d85393d2d40e3494464440bd8fccb2c957baa430b7
+Input Tensor:  [1, 160, 160, 3] (float32)
+Output Tensor: [1, 512] (float32)
+Extraction of the TFLite conversion metadata strings from both binaries reveals the signatures:
+
+serving_default_input_layer:0
+CONVERSION_METADATA
+min_runtime_version
+These correspond to standard Keras functional model export pipelines using tf.lite.TFLiteConverter.from_keras_model.
+
+2.2 Provenance & Checkpoint Lineage
+Tracing the commit history, published articles, and documentation from the upstream project (shubham0204/OnDevice-Face-Recognition-Android and shubham0204/FaceRecognition_With_FaceNet_Android):
+
+Step 1 (Shubham Panchal's Conversion): Shubham Panchal documented sourcing the Keras .h5 model files directly from the public GitHub repository nyoki-mtl/keras-facenet and converting them with tf.lite.TFLiteConverter.
+Step 2 (nyoki-mtl/keras-facenet Origin): nyoki-mtl ported the weights directly from David Sandberg's repository (davidsandberg/facenet), the widely adopted open-source TensorFlow implementation of Google's FaceNet paper (Schroff et al., CVPR 2015).
+Step 3 (The Specific Checkpoints):
+128-d model: Sandberg checkpoint 20170512-110547 (Inception-ResNet-v1 trained on CASIA-WebFace).
+512-d model: Sandberg checkpoint 20180402-114759 or 20180408-102900 (Inception-ResNet-v1 trained on VGGFace2).
+2.3 Training Dataset Restrictions (The Critical Legal Conflict)
+While both David Sandberg's repository and nyoki-mtl's repository carry the permissive MIT License, the MIT License covers only their Python code, not the proprietary or restricted training weights:
+
+CASIA-WebFace (128-d model):
+Source: Institute of Automation, Chinese Academy of Sciences (CASIA).
+Terms: The CASIA-WebFace dataset agreement explicitly restricts usage to academic research and non-commercial purposes only. Commercial use, inclusion in commercial products, and commercial distribution of models derived from it are strictly prohibited.
+VGGFace2 (512-d model):
+Source: Visual Geometry Group (VGG), University of Oxford (funded in part by IARPA/ODNI).
+Terms: The VGGFace2 license agreement states: "The dataset is available for non-commercial research purposes only." Commercial exploitation or redistribution of models trained on VGGFace2 is strictly prohibited.
+Patent Exposure:
+Google holds US Patent 9,805,274 ("Biometric facial recognition using deep neural network architectures and triplet loss").
+2.4 Conclusion for FaceNet
+CAUTION
+
+P0 Commercial Blocker Confirmed.
+Neither facenet.tflite nor facenet_512.tflite can be legally shipped in a commercial product. The underlying training data agreements for both CASIA-WebFace and VGGFace2 explicitly forbid commercial exploitation. In MODEL_LICENSES, their status must remain "VERIFY MANUALLY / UNVERIFIED — P0 blocker" until replaced.
+
+3. Deep Dive: blaze_face_short_range.tflite
+3.1 Binary Metadata & Hashes
+text
+File: blaze_face_short_range.tflite
+Size: 229,746 bytes (224 KB)
+SHA256: b4578f35940bf5a1a655214a1cce5cab13eba73c1297cd78e1a04c2380b0152f
+Input Tensor:  [1, 128, 128, 3] (float32)
+Output Tensors: Regressors [1, 896, 16], Classifiers [1, 896, 1]
+Extracting embedded binary metadata buffers (TFLITE_METADATA) at byte offset 92 reveals:
+
+Metadata Format: M001 (TFLite Model Metadata specification)
+Metadata Version: 1.0.0
+Author: MediaPipe
+Internal Compile Path: blaze-out/k8-fastbuild/genfiles/research/aimatter/nnets/models/facedetector_front_blaze_2019_10_17_v0/keras2tflite_facedetector-front.tflite.generated (Note: AIMatter was the computer vision startup acquired by Google in 2017 whose neural network conversion pipeline forms part of MediaPipe's vision modules).
+3.2 Origin & Checkpoint Lineage
+Upstream Location: In Google's official MediaPipe repository (google-ai-edge/mediapipe), this model is tracked as mediapipe/modules/face_detection/face_detection_short_range.tflite (hosted on Google Cloud Storage at https://storage.googleapis.com/mediapipe-assets/face_detection_short_range.tflite).
+Architecture: BlazeFace (Bazarevsky et al., 2019, Google Research), a sub-millisecond neural face detector designed for mobile GPUs.
+3.3 License & Redistribution Terms
+Framework & Model Asset License: Both the MediaPipe codebase and the official model asset (face_detection_short_range.tflite) are distributed by Google under the Apache License 2.0.
+Kaggle Models Verification: On Google's official model repository on Kaggle (google/face-detector), Google lists the license specifically as Apache 2.0.
+Commercial Redistribution Rights:
+Commercial use is expressly permitted under Apache 2.0 (§2).
+Redistribution in binary form is permitted (§4) under the conditions that:
+A copy of the Apache 2.0 license is included with the application distribution.
+Proper attribution is given to Google LLC in /NOTICE.
+Prominent notices are retained if modifications were made.
+Alternative in EduVision:
+Notice that in EduVision's 
+
+AppModule.kt
+, isMLKit = true is currently configured as the default detector (MLKitFaceDetector), consuming Google ML Kit via Google Play Services / SDK rather than bundled TFLite. When MediapipeFaceDetector is selected, blaze_face_short_range.tflite is executed.
+3.4 Conclusion for BlazeFace
+NOTE
+
+BlazeFace is Commercially Cleared.
+blaze_face_short_range.tflite is distributed under Apache License 2.0 by Google. Its commercial redistribution is permitted, provided EduVision preserves Apache 2.0 notices and credits Google LLC in 
+
+/NOTICE
+.
+
+4. Summary of Sources
+CASIA-WebFace Dataset Restrictions:
+Institute of Automation, Chinese Academy of Sciences (CASIA): Terms of Usage for Non-Commercial Research.
+VGGFace2 Dataset Restrictions:
+Visual Geometry Group, Department of Engineering Science, Oxford University: VGGFace2 Research License Agreement.
+David Sandberg's FaceNet Repository:
+davidsandberg/facenet GitHub: Pre-trained models and training data documentation.
+nyoki-mtl Keras-FaceNet Port:
+nyoki-mtl/keras-facenet GitHub: Model weight conversion notes.
+Google MediaPipe Face Detection Model Card:
+Google AI Edge / MediaPipe: Face Detection Short-Range Model Card and MediaPipe LICENSE.
+BlazeFace Paper:
+Bazarevsky et al., "BlazeFace: Sub-millisecond Neural Face Detection on Mobile GPUs", CVPR Workshop 2019 (arXiv:1907.05047).
+5. Strategic Recommendations for EduVision Commercialization
+Retain Status in MODEL_LICENSES:
+Keep facenet.tflite and facenet_512.tflite marked as UNVERIFIED — P0 blocker / VERIFY MANUALLY. Document that their training dataset lineage (CASIA-WebFace and VGGFace2) imposes strict non-commercial restrictions.
+Update blaze_face_short_range.tflite in MODEL_LICENSES:
+Update blaze_face_short_range.tflite from "asset terms pending" to Apache License 2.0 / Commercial Use Permitted (with attribution).
+FaceNet Replacement Path Before Commercial Launch:
+To survive legal due diligence, EduVision will need to substitute the FaceNet embedding weights with:
+A commercially cleared model like MobileFaceNet trained on synthetic datasets or datasets with commercial rights (e.g. Glint360k under commercial agreement), or
+An on-device face recognition SDK with cleared vendor licensing.

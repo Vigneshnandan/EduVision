@@ -1,3 +1,10 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
 package com.eduvision.attendance.presentation.screens.result
 
 import androidx.compose.foundation.BorderStroke
@@ -29,7 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eduvision.attendance.domain.AttendanceDraftUseCase
 import com.eduvision.attendance.domain.AttendanceUseCase
+import com.eduvision.attendance.domain.DraftEntry
 import com.eduvision.attendance.domain.PersonUseCase
 import com.eduvision.attendance.presentation.components.AppSearchField
 import com.eduvision.attendance.presentation.components.CircularPercentRing
@@ -43,22 +52,60 @@ import org.koin.androidx.compose.koinViewModel
 @KoinViewModel
 class AttendanceResultViewModel(
     private val personUseCase: PersonUseCase,
-    private val attendanceUseCase: AttendanceUseCase
+    private val attendanceUseCase: AttendanceUseCase,
+    val attendanceDraftUseCase: AttendanceDraftUseCase
 ) : ViewModel() {
     val results = mutableStateListOf<StudentResult>()
+    val isCommitting = mutableStateOf(false)
 
     fun loadResults(studentClass: String, date: Long) {
         viewModelScope.launch {
             results.clear()
             val allPersons = personUseCase.getAllPersonsByClass(studentClass)
-            // Use the passed date
-            val attendanceRecords = attendanceUseCase.getAttendanceForClass(studentClass, date)
 
-            val resultMap = allPersons.map { person ->
-                val isPresent = attendanceRecords.any { it.studentId == person.personID }
-                StudentResult(person, isPresent)
+            // Prefer in-memory draft if it matches the current session class
+            val hasActiveDraft = attendanceDraftUseCase.studentClass == studentClass && attendanceDraftUseCase.draftMap.isNotEmpty()
+
+            val resultMap = if (hasActiveDraft) {
+                allPersons.map { person ->
+                    val isPresent = attendanceDraftUseCase.isPresent(person.personID)
+                    StudentResult(person, isPresent)
+                }
+            } else {
+                val attendanceRecords = attendanceUseCase.getAttendanceForClass(studentClass, date)
+                allPersons.map { person ->
+                    val isPresent = attendanceRecords.any { it.studentId == person.personID }
+                    StudentResult(person, isPresent)
+                }
             }
             results.addAll(resultMap)
+        }
+    }
+
+    fun confirmAttendance(studentClass: String, date: Long, onDone: () -> Unit) {
+        viewModelScope.launch {
+            isCommitting.value = true
+
+            if (attendanceDraftUseCase.studentClass == studentClass && attendanceDraftUseCase.draftMap.isNotEmpty()) {
+                attendanceUseCase.commitDraft(
+                    studentClass = studentClass,
+                    date = date,
+                    draftEntries = attendanceDraftUseCase.draftMap.values
+                )
+                attendanceDraftUseCase.clear()
+            } else {
+                // If loaded from existing records or manual list
+                val entries = results.map {
+                    DraftEntry(
+                        studentId = it.person.personID,
+                        isPresent = it.isPresent
+                    )
+                }
+                attendanceUseCase.commitDraft(studentClass, date, entries)
+            }
+
+            isCommitting.value = false
+            onDone()
         }
     }
 }
@@ -90,6 +137,8 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
         java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(date))
     }
 
+    val isCommitting by remember { viewModel.isCommitting }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -102,14 +151,23 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
                 },
                 actions = {
                     Button(
-                        onClick = onNavigateHome,
+                        onClick = { viewModel.confirmAttendance(studentClass, date, onNavigateHome) },
+                        enabled = !isCommitting,
                         modifier = Modifier.padding(end = 8.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF29B6F6)),
                         shape = RoundedCornerShape(50),
                     ) {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Done", fontWeight = FontWeight.Bold)
+                        if (isCommitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color(0xFF29B6F6)
+                            )
+                        } else {
+                            Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Done", fontWeight = FontWeight.Bold)
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -121,7 +179,8 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
         bottomBar = {
             Surface(color = Color.White, shadowElevation = 8.dp) {
                 Button(
-                    onClick = onNavigateHome,
+                    onClick = { viewModel.confirmAttendance(studentClass, date, onNavigateHome) },
+                    enabled = !isCommitting,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
@@ -129,9 +188,19 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF29B6F6)),
                 ) {
-                    Icon(Icons.Filled.CheckCircle, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Done", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    if (isCommitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Saving...", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    } else {
+                        Icon(Icons.Filled.CheckCircle, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Done", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

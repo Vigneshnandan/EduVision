@@ -39,6 +39,55 @@ class AttendanceUseCase {
         }
     }
 
+    /**
+     * Batch-commits an in-memory session draft to persistent AttendanceRecord entities.
+     * Only entries with isPresent = true are persisted; if an entry was marked absent
+     * (e.g. after a manual correction), any pre-existing record for that date is removed.
+     */
+    suspend fun commitDraft(
+        studentClass: String,
+        date: Long,
+        draftEntries: Collection<DraftEntry>
+    ): Int = withContext(Dispatchers.IO) {
+        val recordsToPut = mutableListOf<AttendanceRecord>()
+        for (draft in draftEntries) {
+            val existing = attendanceBox.query(
+                AttendanceRecord_.studentId.equal(draft.studentId)
+                    .and(AttendanceRecord_.date.equal(date))
+            ).build().findFirst()
+
+            if (draft.isPresent) {
+                if (existing != null) {
+                    existing.isPresent = true
+                    existing.isManual = draft.isManual
+                    existing.markedByTeacherId = draft.markedByTeacherId
+                    existing.timestamp = System.currentTimeMillis()
+                    recordsToPut.add(existing)
+                } else {
+                    recordsToPut.add(
+                        AttendanceRecord(
+                            studentId = draft.studentId,
+                            date = date,
+                            timestamp = System.currentTimeMillis(),
+                            isPresent = true,
+                            studentClass = studentClass,
+                            isManual = draft.isManual,
+                            markedByTeacherId = draft.markedByTeacherId
+                        )
+                    )
+                }
+            } else {
+                if (existing != null) {
+                    attendanceBox.remove(existing)
+                }
+            }
+        }
+        if (recordsToPut.isNotEmpty()) {
+            attendanceBox.put(recordsToPut)
+        }
+        recordsToPut.size
+    }
+
     suspend fun getAttendanceForClass(studentClass: String, date: Long = getTodayTimestamp()): List<AttendanceRecord> {
         return withContext(Dispatchers.IO) {
             attendanceBox.query(

@@ -256,10 +256,10 @@ This is the architectural change the manual-correction flow depends on.
 3. `AttendanceResultScreen`'s "Confirm"/"Done" action performs the actual `AttendanceUseCase.markAttendance()` writes for every entry in the draft — this is the "Confirm → Sent to Attendance Logs" step in the sketch.
 
 **Deliverables checklist — Phase 4**
-- [ ] `AttendanceDraftUseCase` (or equivalent in-memory holder) for a session's not-yet-committed results
-- [ ] `DetectScreenViewModel` no longer calls `markAttendance` per recognized face — only updates the draft
-- [ ] Draft passed to `AttendanceResultScreen` instead of re-querying committed records
-- [ ] `AttendanceUseCase.markAttendance()` (or a new batch variant) called only on Confirm
+- [x] `AttendanceDraftUseCase` (or equivalent in-memory holder) for a session's not-yet-committed results
+- [x] `DetectScreenViewModel` no longer calls `markAttendance` per recognized face — only updates the draft
+- [x] Draft passed to `AttendanceResultScreen` instead of re-querying committed records
+- [x] `AttendanceUseCase.markAttendance()` (or a new batch variant) called only on Confirm
 
 ---
 
