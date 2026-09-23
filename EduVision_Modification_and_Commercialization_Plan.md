@@ -274,9 +274,9 @@ Built on top of A4's staged draft.
 - Optionally show a small "Manual" tag next to any row the teacher has toggled, so it's visible before confirming (mirrors the Dashboard-side badge from A1.5).
 
 **Deliverables checklist — Phase 5**
-- [ ] `ResultItem` tappable, toggles draft state + sets `isManual`
-- [ ] `AttendanceResultScreen` "Confirm" button wired to the batch commit
-- [ ] Manual-edit visual indicator in the result list
+- [x] `ResultItem` tappable, toggles draft state + sets `isManual`
+- [x] `AttendanceResultScreen` "Confirm" button wired to the batch commit
+- [x] Manual-edit visual indicator in the result list
 
 ---
 

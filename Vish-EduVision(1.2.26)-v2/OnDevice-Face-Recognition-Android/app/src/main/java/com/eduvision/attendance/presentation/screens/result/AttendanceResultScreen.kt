@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.School
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.eduvision.attendance.data.auth.AuthRepository
 import com.eduvision.attendance.domain.AttendanceDraftUseCase
 import com.eduvision.attendance.domain.AttendanceUseCase
 import com.eduvision.attendance.domain.DraftEntry
@@ -53,6 +55,7 @@ import org.koin.androidx.compose.koinViewModel
 class AttendanceResultViewModel(
     private val personUseCase: PersonUseCase,
     private val attendanceUseCase: AttendanceUseCase,
+    private val authRepository: AuthRepository,
     val attendanceDraftUseCase: AttendanceDraftUseCase
 ) : ViewModel() {
     val results = mutableStateListOf<StudentResult>()
@@ -68,17 +71,36 @@ class AttendanceResultViewModel(
 
             val resultMap = if (hasActiveDraft) {
                 allPersons.map { person ->
-                    val isPresent = attendanceDraftUseCase.isPresent(person.personID)
-                    StudentResult(person, isPresent)
+                    val draft = attendanceDraftUseCase.getDraftEntry(person.personID)
+                    val isPresent = draft?.isPresent == true
+                    val isManual = draft?.isManual == true
+                    StudentResult(person, isPresent, isManual)
                 }
             } else {
                 val attendanceRecords = attendanceUseCase.getAttendanceForClass(studentClass, date)
                 allPersons.map { person ->
-                    val isPresent = attendanceRecords.any { it.studentId == person.personID }
-                    StudentResult(person, isPresent)
+                    val record = attendanceRecords.firstOrNull { it.studentId == person.personID }
+                    StudentResult(person, record != null, record?.isManual == true)
                 }
             }
             results.addAll(resultMap)
+        }
+    }
+
+    fun toggleStudent(personId: Long) {
+        val currentTeacher = authRepository.getCurrentTeacher()
+        val teacherId = currentTeacher?.teacherLoginId ?: ""
+
+        attendanceDraftUseCase.togglePresence(personId, teacherId)
+
+        val index = results.indexOfFirst { it.person.personID == personId }
+        if (index != -1) {
+            val current = results[index]
+            val updatedDraft = attendanceDraftUseCase.getDraftEntry(personId)
+            results[index] = current.copy(
+                isPresent = updatedDraft?.isPresent ?: !current.isPresent,
+                isManual = updatedDraft?.isManual ?: true
+            )
         }
     }
 
@@ -86,23 +108,25 @@ class AttendanceResultViewModel(
         viewModelScope.launch {
             isCommitting.value = true
 
-            if (attendanceDraftUseCase.studentClass == studentClass && attendanceDraftUseCase.draftMap.isNotEmpty()) {
-                attendanceUseCase.commitDraft(
-                    studentClass = studentClass,
-                    date = date,
-                    draftEntries = attendanceDraftUseCase.draftMap.values
-                )
-                attendanceDraftUseCase.clear()
-            } else {
-                // If loaded from existing records or manual list
-                val entries = results.map {
-                    DraftEntry(
-                        studentId = it.person.personID,
-                        isPresent = it.isPresent
-                    )
+            val currentTeacher = authRepository.getCurrentTeacher()
+            val teacherId = currentTeacher?.teacherLoginId ?: ""
+
+            // Ensure all items in results are present in draft before commit
+            results.forEach { res ->
+                val draft = attendanceDraftUseCase.getDraftEntry(res.person.personID)
+                if (draft == null) {
+                    if (res.isPresent) {
+                        attendanceDraftUseCase.markPresent(res.person.personID)
+                    }
                 }
-                attendanceUseCase.commitDraft(studentClass, date, entries)
             }
+
+            attendanceUseCase.commitDraft(
+                studentClass = studentClass,
+                date = date,
+                draftEntries = attendanceDraftUseCase.draftMap.values
+            )
+            attendanceDraftUseCase.clear()
 
             isCommitting.value = false
             onDone()
@@ -166,7 +190,7 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
                         } else {
                             Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Done", fontWeight = FontWeight.Bold)
+                            Text("Confirm", fontWeight = FontWeight.Bold)
                         }
                     }
                 },
@@ -199,7 +223,7 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
                     } else {
                         Icon(Icons.Filled.CheckCircle, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Done", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Confirm Attendance", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -341,12 +365,41 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text(
-                text = "Student Attendance",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = Color.Black
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Student Attendance",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black
+                )
+                Surface(
+                    color = Color(0xFFE1F5FE),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Edit,
+                            contentDescription = null,
+                            tint = Color(0xFF0288D1),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Tap to correct",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color(0xFF0288D1)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -361,7 +414,10 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
 
             Column(modifier = Modifier.padding(bottom = 96.dp)) {
                 filteredResults.forEach { result ->
-                    ResultItem(result)
+                    ResultItem(
+                        result = result,
+                        onToggle = { viewModel.toggleStudent(result.person.personID) }
+                    )
                 }
             }
         }
