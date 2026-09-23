@@ -1,3 +1,10 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
 package com.eduvision.attendance.data
 
 import io.objectbox.kotlin.flow
@@ -12,6 +19,12 @@ class PersonDB {
     private val personBox = ObjectBoxStore.store.boxFor(PersonRecord::class.java)
 
     fun addPerson(person: PersonRecord): Long = personBox.put(person)
+
+    fun getPerson(personID: Long): PersonRecord? = personBox.get(personID)
+
+    fun updatePerson(person: PersonRecord) {
+        personBox.put(person)
+    }
 
     fun removePerson(personID: Long) {
         personBox.removeByIds(listOf(personID))
@@ -40,6 +53,12 @@ class PersonDB {
             .find()
     }
 
+    fun getPendingSyncStudents(): List<PersonRecord> {
+        return personBox.query(PersonRecord_.pendingStudentSync.equal(true))
+            .build()
+            .find()
+    }
+
     fun getAllClasses(): List<String> {
         return personBox.query()
             .build()
@@ -51,3 +70,4 @@ class PersonDB {
             .sorted()
     }
 }
+

@@ -1,3 +1,10 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
 package com.eduvision.attendance.data
 
 import io.objectbox.annotation.Entity
@@ -32,7 +39,9 @@ data class PersonRecord(
     // time when the record was added
     var addTime: Long = 0,
     var studentClass: String = "",
-    var rollNumber: String = ""
+    var rollNumber: String = "",
+    var schoolId: String = "",
+    var pendingStudentSync: Boolean = false
 )
 
 @Entity

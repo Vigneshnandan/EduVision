@@ -25,10 +25,12 @@ create policy if not exists "Allow generic read access" on public.attendance
 create policy if not exists "Allow generic insert access" on public.attendance
     for insert with check (true);
 
--- Add multi-tenancy columns to student_details
+-- Add multi-tenancy and metadata columns to student_details
 alter table public.student_details
     add column if not exists school_id uuid references public.schools(school_id),
-    add column if not exists teacher_id uuid;
+    add column if not exists teacher_id uuid,
+    add column if not exists student_name text,
+    add column if not exists class_name text;
 
 -- Add multi-tenancy and manual correction columns to attendance
 alter table public.attendance

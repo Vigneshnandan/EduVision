@@ -1,3 +1,10 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
 package com.eduvision.attendance.data.cloud
 
 import com.eduvision.attendance.data.AttendanceRecord
@@ -44,17 +51,68 @@ class CloudSyncRepository(
             .create(CloudSyncService::class.java)
     }
 
+    /**
+     * Pushes student metadata to cloud.
+     * Note: Only student details (personName, studentClass, rollNumber, schoolId) are pushed.
+     * Raw face embeddings or biometric data are NEVER sent to the cloud.
+     */
+    suspend fun pushStudentDetails(person: PersonRecord): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val record = CloudStudentDetailsRecord(
+                studentId = person.personID.toString(),
+                studentName = person.personName,
+                className = person.studentClass,
+                rollNumber = person.rollNumber,
+                schoolId = person.schoolId.ifEmpty { null }
+            )
+            api.pushStudentDetails(listOf(record))
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Flushes any pending student registrations queued while offline.
+     */
+    suspend fun syncPendingStudents(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            val pendingStudents = personUseCase.getPendingSyncStudents()
+            if (pendingStudents.isEmpty()) {
+                return@withContext Result.success(0)
+            }
+
+            val records = pendingStudents.map { person ->
+                CloudStudentDetailsRecord(
+                    studentId = person.personID.toString(),
+                    studentName = person.personName,
+                    className = person.studentClass,
+                    rollNumber = person.rollNumber,
+                    schoolId = person.schoolId.ifEmpty { null }
+                )
+            }
+
+            api.pushStudentDetails(records)
+
+            // Mark synced locally
+            pendingStudents.forEach { person ->
+                person.pendingStudentSync = false
+                personUseCase.updatePerson(person)
+            }
+
+            Result.success(records.size)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
     suspend fun syncAttendance(): Result<String> = withContext(Dispatchers.IO) {
         try {
-            // 1. Get all attendance records (simplification: syncing everything or just for today/class?)
-            // For now, let's sync ALL records to be safe, or we can filter.
-            // Since the user said "sync the attendance data... so that i can create a dashboard", syncing all is safer.
-            
-            // We need a way to get ALL attendance records. 
-            // attendanceUseCase doesn't seem to have getAll(). Let's check or use Box directly.
-            // Assuming we can access the box via ObjectBoxStore if exposed or add a method.
-            // Let's use the BoxStore directly since we're in data layer kinda (or injected).
-            
+            // Also flush pending student registration records if any
+            syncPendingStudents()
+
             val attendanceBox = boxStore.boxFor(AttendanceRecord::class.java)
             val personBox = boxStore.boxFor(PersonRecord::class.java)
             
@@ -76,7 +134,7 @@ class CloudSyncRepository(
                         timestamp = attendance.timestamp,
                         isManual = attendance.isManual,
                         markedBy = attendance.markedByTeacherId.ifEmpty { null },
-                        schoolId = null
+                        schoolId = person.schoolId.ifEmpty { null }
                     )
                 } else {
                     null
@@ -87,10 +145,6 @@ class CloudSyncRepository(
                 return@withContext Result.success("No valid records to sync (students missing?)")
             }
 
-            // 2. Push to cloud
-            // Note: In Supabase, you usually need an API Key header. 
-            // For simplicity, we are just calling the interface. 
-            // The user might need to add interceptors later.
             api.pushAttendanceRecords(cloudRecords)
             
             Result.success("Synced ${cloudRecords.size} records successfully")
@@ -100,3 +154,4 @@ class CloudSyncRepository(
         }
     }
 }
+

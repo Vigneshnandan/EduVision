@@ -38,7 +38,7 @@
     },
     {
       "id": "2:5724033975412775664",
-      "lastPropertyId": "7:8216125998210209069",
+      "lastPropertyId": "9:697244337313979359",
       "name": "PersonRecord",
       "properties": [
         {
@@ -71,6 +71,16 @@
           "id": "7:8216125998210209069",
           "name": "rollNumber",
           "type": 9
+        },
+        {
+          "id": "8:5715016266230524943",
+          "name": "schoolId",
+          "type": 9
+        },
+        {
+          "id": "9:697244337313979359",
+          "name": "pendingStudentSync",
+          "type": 1
         }
       ],
       "relations": []

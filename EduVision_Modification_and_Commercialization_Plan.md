@@ -289,9 +289,9 @@ Per note 3: "One-time student registration with photos → student details alone
 - Populates `student_details` (A1.3) with a `school_id`, closing the loop with the school selected at teacher registration.
 
 **Deliverables checklist — Phase 6**
-- [ ] Cloud push of student details (no embeddings) after local registration
-- [ ] Offline queue/retry for this push if registration happens without connectivity
-- [ ] `student_details` rows correctly scoped to `school_id`
+- [x] Cloud push of student details (no embeddings) after local registration
+- [x] Offline queue/retry for this push if registration happens without connectivity
+- [x] `student_details` rows correctly scoped to `school_id`
 
 ---
 
