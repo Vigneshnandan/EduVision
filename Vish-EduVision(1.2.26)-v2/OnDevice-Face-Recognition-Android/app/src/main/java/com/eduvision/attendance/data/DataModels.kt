@@ -42,7 +42,9 @@ data class AttendanceRecord(
     var date: Long = 0, // Day timestamp (midnight)
     var timestamp: Long = 0, // Exact time of marking
     var isPresent: Boolean = false,
-    var studentClass: String = ""
+    var studentClass: String = "",
+    var isManual: Boolean = false,        // NEW — true if a teacher edited/overrode this record
+    var markedByTeacherId: String = ""    // NEW — which teacher made the manual edit
 )
 
 data class RecognitionMetrics(

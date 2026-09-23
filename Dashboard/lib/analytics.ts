@@ -6,6 +6,7 @@ export interface ClassAnalytics {
     presentCount: number
     totalCount: number
     percentage: number
+    manualCount?: number
 }
 
 export async function getClassAnalytics(): Promise<ClassAnalytics[]> {
@@ -17,7 +18,7 @@ export async function getClassAnalytics(): Promise<ClassAnalytics[]> {
 
     const { data: logs, error } = await supabase
         .from('attendance')
-        .select('student_id, class_name, is_present, date')
+        .select('student_id, class_name, is_present, date, is_manual')
 
     if (error) {
         console.error('Error fetching attendance table:', JSON.stringify(error, null, 2))
@@ -72,11 +73,18 @@ export async function getClassAnalytics(): Promise<ClassAnalytics[]> {
 
     // Calculate Present Today (Unique IDs present today)
     const presentStudentsPerClass: Record<string, Set<string>> = {}
+    const manualStudentsPerClass: Record<string, Set<string>> = {}
     logs?.forEach((log: any) => {
-        if (log.date >= startOfDay && log.date < endOfDay && log.is_present) {
+        if (log.date >= startOfDay && log.date < endOfDay) {
             const className = log.class_name || 'Unassigned'
-            if (!presentStudentsPerClass[className]) presentStudentsPerClass[className] = new Set()
-            presentStudentsPerClass[className].add(log.student_id)
+            if (log.is_present) {
+                if (!presentStudentsPerClass[className]) presentStudentsPerClass[className] = new Set()
+                presentStudentsPerClass[className].add(log.student_id)
+            }
+            if (log.is_manual) {
+                if (!manualStudentsPerClass[className]) manualStudentsPerClass[className] = new Set()
+                manualStudentsPerClass[className].add(log.student_id)
+            }
         }
     })
 
@@ -84,11 +92,13 @@ export async function getClassAnalytics(): Promise<ClassAnalytics[]> {
     return Object.keys(uniqueStudentsPerClass).map(className => {
         const total = uniqueStudentsPerClass[className].size
         const present = presentStudentsPerClass[className]?.size || 0
+        const manual = manualStudentsPerClass[className]?.size || 0
         return {
             className,
             totalCount: total,
             presentCount: present,
-            percentage: total > 0 ? (present / total) * 100 : 0
+            percentage: total > 0 ? (present / total) * 100 : 0,
+            manualCount: manual
         }
     }).sort((a, b) => a.className.localeCompare(b.className))
 }

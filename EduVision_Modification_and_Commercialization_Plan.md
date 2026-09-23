@@ -163,13 +163,13 @@ Corresponding Supabase attendance table needs `is_manual boolean default false` 
 `Dashboard/components/ClassBreakdown.tsx`, `MonthlyRegisterTable.tsx`, `RecentActivityTable.tsx` — add a small "Manual" badge/icon wherever a per-student attendance cell or row is rendered, sourced from `is_manual`. This is the "flagged as manual in Dashboard" requirement from the note.
 
 **Deliverables checklist — Phase 1**
-- [ ] `TeacherRecord` ObjectBox entity + generated `TeacherRecord_` (build step)
-- [ ] `schools.sql` migration + applied to Supabase project
-- [ ] `teachers.sql` migration
-- [ ] `school_id`/`teacher_id` columns added to `student_details` (and the live `attendance` table)
-- [ ] `isManual` + `markedByTeacherId` added to `AttendanceRecord`
-- [ ] `CloudAttendanceRecord` updated with `is_manual`, `marked_by`, `school_id`
-- [ ] Dashboard components show a manual-edit indicator
+- [x] `TeacherRecord` ObjectBox entity + generated `TeacherRecord_` (build step)
+- [x] `schools.sql` migration + applied to Supabase project
+- [x] `teachers.sql` migration
+- [x] `school_id`/`teacher_id` columns added to `student_details` (and the live `attendance` table)
+- [x] `isManual` + `markedByTeacherId` added to `AttendanceRecord`
+- [x] `CloudAttendanceRecord` updated with `is_manual`, `marked_by`, `school_id`
+- [x] Dashboard components show a manual-edit indicator
 
 ---
 
@@ -505,7 +505,7 @@ Also review and remove/update as appropriate: `CHANGELOG.md`, `.github/FUNDING.y
 
 ## B7. Track B checklist
 
-- [ ] `FaceNet.kt` attribution comment completed
+- [x] `FaceNet.kt` attribution comment completed
 - [ ] `/NOTICE` created
 - [ ] `/THIRD_PARTY_LICENSES` created
 - [ ] `/MODEL_LICENSES` created

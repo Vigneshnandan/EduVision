@@ -9,5 +9,8 @@ data class CloudAttendanceRecord(
     @SerializedName("roll_number") val rollNumber: String,
     @SerializedName("date") val date: Long,
     @SerializedName("is_present") val isPresent: Boolean,
-    @SerializedName("timestamp") val timestamp: Long
+    @SerializedName("timestamp") val timestamp: Long,
+    @SerializedName("is_manual") val isManual: Boolean = false,
+    @SerializedName("marked_by") val markedBy: String? = null,
+    @SerializedName("school_id") val schoolId: String? = null
 )

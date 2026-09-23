@@ -6,6 +6,7 @@ export interface AttendanceGridRow {
     name: string
     // Map of day number (1-31) to status ('P', 'A', '-')
     attendance: Record<number, string>
+    manualDays?: Record<number, boolean>
 }
 
 
@@ -52,7 +53,7 @@ export async function getMonthlyAttendance(month: number, year: number): Promise
     // Decision: Fetch logs for the requested month.
     const { data: logs, error } = await supabase
         .from('attendance')
-        .select('student_id, name, date, is_present')
+        .select('student_id, name, date, is_present, is_manual')
         .gte('date', startTs)
         .lte('date', endTs)
 
@@ -71,7 +72,8 @@ export async function getMonthlyAttendance(month: number, year: number): Promise
             rowMap[id] = {
                 studentId: id,
                 name: log.name,
-                attendance: {}
+                attendance: {},
+                manualDays: {}
             }
         }
 
@@ -88,6 +90,9 @@ export async function getMonthlyAttendance(month: number, year: number): Promise
             rowMap[id].attendance[day] = 'P'
         } else {
             rowMap[id].attendance[day] = 'A'
+        }
+        if (log.is_manual) {
+            rowMap[id].manualDays![day] = true
         }
     })
 

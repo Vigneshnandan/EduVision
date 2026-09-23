@@ -77,7 +77,7 @@
     },
     {
       "id": "3:4314915301581714600",
-      "lastPropertyId": "6:4201743360891519228",
+      "lastPropertyId": "8:2265178134719502752",
       "name": "AttendanceRecord",
       "properties": [
         {
@@ -112,13 +112,74 @@
           "id": "6:4201743360891519228",
           "name": "studentClass",
           "type": 9
+        },
+        {
+          "id": "7:1261692465539960204",
+          "name": "isManual",
+          "type": 1
+        },
+        {
+          "id": "8:2265178134719502752",
+          "name": "markedByTeacherId",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:2277580212027582681",
+      "lastPropertyId": "8:4063120642420419347",
+      "name": "TeacherRecord",
+      "properties": [
+        {
+          "id": "1:4164449776265127223",
+          "name": "teacherID",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:643250230885432029",
+          "name": "teacherRemoteId",
+          "indexId": "4:2018114357385402221",
+          "type": 9,
+          "flags": 2048
+        },
+        {
+          "id": "3:5124174307037556084",
+          "name": "teacherName",
+          "type": 9
+        },
+        {
+          "id": "4:2295450768347304101",
+          "name": "teacherLoginId",
+          "type": 9
+        },
+        {
+          "id": "5:373506183460255901",
+          "name": "schoolId",
+          "type": 9
+        },
+        {
+          "id": "6:2827988955408953483",
+          "name": "schoolName",
+          "type": 9
+        },
+        {
+          "id": "7:7192257299684789543",
+          "name": "sessionToken",
+          "type": 9
+        },
+        {
+          "id": "8:4063120642420419347",
+          "name": "lastLoginTime",
+          "type": 6
         }
       ],
       "relations": []
     }
   ],
-  "lastEntityId": "3:4314915301581714600",
-  "lastIndexId": "3:1188666156147938985",
+  "lastEntityId": "4:2277580212027582681",
+  "lastIndexId": "4:2018114357385402221",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,

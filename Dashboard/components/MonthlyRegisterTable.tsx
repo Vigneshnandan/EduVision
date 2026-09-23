@@ -46,7 +46,13 @@ export function MonthlyRegisterTable({ data, month, year, daysInMonth }: Monthly
             <CardHeader className="flex flex-row items-center justify-between border-b bg-gray-50/50 py-4">
                 <div>
                     <CardTitle className="text-xl text-gray-800 font-serif">Official Attendance Register</CardTitle>
-                    <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">Form 9A • Monthly Record</p>
+                    <div className="flex items-center gap-3 mt-1">
+                        <p className="text-xs text-gray-500 uppercase tracking-widest">Form 9A • Monthly Record</p>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                            Manual edit
+                        </span>
+                    </div>
                 </div>
                 <Button
                     size="sm"
@@ -91,15 +97,22 @@ export function MonthlyRegisterTable({ data, month, year, daysInMonth }: Monthly
                                         </TableCell>
                                         {days.map(d => {
                                             const status = row.attendance[d] || 'A'
+                                            const isManual = row.manualDays?.[d]
                                             return (
-                                                <TableCell key={d} className="p-0 text-center border-r border-gray-100 h-10 w-8">
+                                                <TableCell key={d} className="p-0 text-center border-r border-gray-100 h-10 w-8 relative">
                                                     {status === 'P' ? (
-                                                        <span className="inline-flex items-center justify-center h-full w-full font-bold text-emerald-600 text-xs">
+                                                        <span className="inline-flex items-center justify-center h-full w-full font-bold text-emerald-600 text-xs relative">
                                                             P
+                                                            {isManual && (
+                                                                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" title="Manually edited" />
+                                                            )}
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center justify-center h-full w-full text-gray-300 text-[10px]">
+                                                        <span className="inline-flex items-center justify-center h-full w-full text-gray-300 text-[10px] relative">
                                                             -
+                                                            {isManual && (
+                                                                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full" title="Manually edited" />
+                                                            )}
                                                         </span>
                                                     )}
                                                 </TableCell>

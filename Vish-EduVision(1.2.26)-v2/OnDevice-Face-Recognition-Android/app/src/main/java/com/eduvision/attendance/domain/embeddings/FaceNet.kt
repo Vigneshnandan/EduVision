@@ -19,6 +19,8 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBufferFloat
 import java.nio.ByteBuffer
 
 // Derived from the original project:
+// Source: https://github.com/shubham0204/OnDevice-Face-Recognition-Android
+// Copyright (c) Shubham Panchal. Licensed under the Apache License, Version 2.0.
 
 // Utility class for FaceNet model
 @Single

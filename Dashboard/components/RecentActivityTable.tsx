@@ -21,6 +21,8 @@ export interface AttendanceLog {
     class_name: string;
     is_present: boolean;
     timestamp: number;
+    is_manual?: boolean;
+    marked_by?: string;
 }
 
 export interface ClassBatch {
@@ -156,9 +158,16 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                                     `}
                                                                     />
                                                                     <div className="flex flex-col">
-                                                                        <span className="font-medium text-gray-900">
-                                                                            {student.name}
-                                                                        </span>
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            <span className="font-medium text-gray-900">
+                                                                                {student.name}
+                                                                            </span>
+                                                                            {student.is_manual && (
+                                                                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-amber-300 text-amber-700 bg-amber-50">
+                                                                                    Manual
+                                                                                </Badge>
+                                                                            )}
+                                                                        </div>
                                                                         <span className="text-xs text-gray-500">
                                                                             ID: {student.student_id}
                                                                         </span>

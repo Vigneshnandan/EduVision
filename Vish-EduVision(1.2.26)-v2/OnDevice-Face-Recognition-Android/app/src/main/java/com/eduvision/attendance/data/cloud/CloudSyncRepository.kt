@@ -73,7 +73,10 @@ class CloudSyncRepository(
                         rollNumber = person.rollNumber,
                         date = attendance.date,
                         isPresent = attendance.isPresent,
-                        timestamp = attendance.timestamp
+                        timestamp = attendance.timestamp,
+                        isManual = attendance.isManual,
+                        markedBy = attendance.markedByTeacherId.ifEmpty { null },
+                        schoolId = null
                     )
                 } else {
                     null
