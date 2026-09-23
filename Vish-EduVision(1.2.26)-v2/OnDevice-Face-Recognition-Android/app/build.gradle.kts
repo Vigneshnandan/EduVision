@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.ml.shubham0204.facenet_android"
+    namespace = "com.eduvision.attendance"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.ml.shubham0204.facenet_android"
+        applicationId = "com.eduvision.attendance"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

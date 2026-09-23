@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "FaceNet-Android"
+rootProject.name = "EduVision"
 include(":app")

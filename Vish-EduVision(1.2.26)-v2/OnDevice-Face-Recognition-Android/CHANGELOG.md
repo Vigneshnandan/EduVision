@@ -1,2 +1,5 @@
-- Initial release of `FaceNet-Android`
-- The app allows the users to add new faces to the database and recognize them in real-time.
+# Changelog
+
+## 0.0.1 - EduVision Initial Setup
+- Initial release of EduVision on-device face recognition attendance platform.
+- Rebranded and structured for school attendance management.
