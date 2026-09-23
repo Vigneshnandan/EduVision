@@ -1,0 +1,17 @@
+EduVision
+Copyright © 2026 EduVision. All rights reserved.
+
+[DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
+
+This product includes software developed by third parties, including but
+not limited to:
+
+- OnDevice-Face-Recognition-Android (shubham0204) — Apache License 2.0
+- MiniFASNet / Silent-Face-Anti-Spoofing (MiniVision) — Apache License 2.0
+- DeepFace-related components — MIT License
+- Google MediaPipe — Apache License 2.0 (framework); model asset terms
+  verified separately, see /MODEL_LICENSES
+- Google ML Kit — subject to Google APIs / ML Kit Terms of Service
+
+See /THIRD_PARTY_LICENSES for the full dependency list and
+/MODEL_LICENSES for model-specific provenance and licensing.

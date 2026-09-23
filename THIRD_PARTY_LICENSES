@@ -1,0 +1,52 @@
+[DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
+
+Component: OnDevice-Face-Recognition-Android
+Source: https://github.com/shubham0204/OnDevice-Face-Recognition-Android
+License: Apache License 2.0
+Usage: Modified derivative (Android module scaffold, MainActivity.kt,
+       MainApplication.kt, di/AppModule.kt, ObjectBoxStore.kt, PersonDB.kt,
+       ImagesVectorDB.kt, domain/embeddings/FaceNet.kt,
+       domain/face_detection/*, parts of Compose screen architecture)
+Commercial use: Permitted subject to Apache 2.0 obligations
+Attribution required: Yes
+
+Component: MiniFASNet / Silent-Face-Anti-Spoofing
+Source: [MiniVision repository — confirm exact URL]
+License: Apache License 2.0
+Usage: spoof_model_scale_2_7.tflite, spoof_model_scale_4_0.tflite
+       (format-converted via DeepFace / AI Edge Torch tooling)
+Commercial use: Permitted subject to Apache 2.0 obligations
+Attribution required: Yes
+
+Component: ObjectBox
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: Koin
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: TensorFlow Lite / LiteRT
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: CameraX
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: Retrofit / Gson / Coil
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: AndroidX / Jetpack Compose
+License: Apache License 2.0
+Commercial use: Permitted
+
+Component: Google ML Kit (Face Detection)
+License: Google APIs / ML Kit Terms of Service (not open-source; consumed as SDK dependency)
+Commercial use: Permitted subject to current Google terms — re-verify against the exact SDK version shipped
+
+Component: Dashboard npm dependencies (Next.js, React, Supabase JS client, etc.)
+License: Mostly MIT / ISC
+Commercial use: Permitted with attribution obligations
+Notes: Full transitive list pending B2.4's license scan

@@ -1,0 +1,37 @@
+[DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
+
+Model: FaceNet (128-d)
+Filename: facenet.tflite
+Original Source: VERIFY MANUALLY
+License: VERIFY MANUALLY
+Commercial Use: VERIFY MANUALLY
+Redistribution: VERIFY MANUALLY
+Provenance Status: UNVERIFIED — P0 blocker
+
+Model: FaceNet (512-d)
+Filename: facenet_512.tflite
+Original Source: VERIFY MANUALLY
+License: VERIFY MANUALLY
+Commercial Use: VERIFY MANUALLY
+Redistribution: VERIFY MANUALLY
+Provenance Status: UNVERIFIED — P0 blocker
+
+Model: MiniFASNet anti-spoofing (scale 2.7)
+Filename: spoof_model_scale_2_7.tflite
+Original Source: Silent-Face-Anti-Spoofing / MiniVision
+License: Apache License 2.0
+Commercial Use: Permitted
+Notes: Converted via DeepFace + AI Edge Torch tooling; preserve existing
+       in-code attribution comments
+
+Model: MiniFASNet anti-spoofing (scale 4.0)
+Filename: spoof_model_scale_4_0.tflite
+Original Source: Silent-Face-Anti-Spoofing / MiniVision
+License: Apache License 2.0
+Commercial Use: Permitted
+
+Model: BlazeFace (short range)
+Filename: blaze_face_short_range.tflite
+Original Source: Google MediaPipe
+License: Framework is Apache-2.0; exact model-asset redistribution terms VERIFY MANUALLY
+Provenance Status: Framework confirmed, asset terms pending — P0 blocker

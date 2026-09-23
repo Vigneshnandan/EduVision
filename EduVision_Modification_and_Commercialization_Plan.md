@@ -184,10 +184,10 @@ New Next.js route handlers under `Dashboard/app/api/` (create this directory —
 Alternative that avoids building custom REST routes at all: adopt **Supabase Auth** directly from the Android app (it has a Kotlin client) for teacher accounts, and use a plain Supabase table `select` (already RLS-public per A1.2) for the schools dropdown. This removes the need for `/api/teachers/*` entirely and is the recommended path — fewer moving parts, and password handling becomes Supabase's problem, not EduVision's.
 
 **Deliverables checklist — Phase 2**
-- [ ] Decision: hand-rolled `/api/teachers/*` vs. Supabase Auth (recommend the latter)
-- [ ] `GET /api/schools` (or equivalent Supabase client call from the app)
-- [ ] Teacher registration path (Supabase Auth signUp, or custom endpoint)
-- [ ] Teacher login path (Supabase Auth signIn, or custom endpoint)
+- [x] Decision: hand-rolled `/api/teachers/*` vs. Supabase Auth (recommend the latter)
+- [x] `GET /api/schools` (or equivalent Supabase client call from the app)
+- [x] Teacher registration path (Supabase Auth signUp, or custom endpoint)
+- [x] Teacher login path (Supabase Auth signIn, or custom endpoint)
 
 ---
 
@@ -506,9 +506,9 @@ Also review and remove/update as appropriate: `CHANGELOG.md`, `.github/FUNDING.y
 ## B7. Track B checklist
 
 - [x] `FaceNet.kt` attribution comment completed
-- [ ] `/NOTICE` created
-- [ ] `/THIRD_PARTY_LICENSES` created
-- [ ] `/MODEL_LICENSES` created
+- [x] `/NOTICE` created
+- [x] `/THIRD_PARTY_LICENSES` created
+- [x] `/MODEL_LICENSES` created
 - [ ] FaceNet model provenance verified
 - [ ] FaceNet training-data/redistribution restrictions verified
 - [ ] BlazeFace model-asset terms verified
