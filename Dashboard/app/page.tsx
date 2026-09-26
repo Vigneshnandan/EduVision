@@ -18,6 +18,7 @@ export default function GovernmentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [totalPresent, setTotalPresent] = useState(0);
   const [attendanceRate, setAttendanceRate] = useState(0);
+  const [totalSchools, setTotalSchools] = useState(0);
   // State for Charts
   const [classPerformance, setClassPerformance] = useState<any[]>([]);
   const [weeklyTrends, setWeeklyTrends] = useState<any[]>([]);
@@ -35,6 +36,12 @@ export default function GovernmentDashboard() {
       sevenDaysAgo.setDate(today.getDate() - 6);
       sevenDaysAgo.setHours(0, 0, 0, 0);
       const sevenDaysAgoEpoch = sevenDaysAgo.getTime();
+
+      // Fetch total schools count
+      const { count: schoolCount } = await supabase
+        .from("schools")
+        .select("*", { count: "exact", head: true });
+      setTotalSchools(schoolCount || 0);
 
       // Fetch logs from last 7 days
       const { data, error } = await supabase
@@ -153,7 +160,7 @@ export default function GovernmentDashboard() {
 
       <main className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* KPI Grid Section */}
-        <KPIGrid totalPresent={totalPresent} attendanceRate={attendanceRate} />
+        <KPIGrid totalPresent={totalPresent} attendanceRate={attendanceRate} registeredSchools={totalSchools} />
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

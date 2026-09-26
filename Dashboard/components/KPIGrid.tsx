@@ -4,9 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 interface KPIGridProps {
     totalPresent: number;
     attendanceRate: number;
+    registeredSchools?: number;
 }
 
-export function KPIGrid({ totalPresent, attendanceRate }: KPIGridProps) {
+export function KPIGrid({ totalPresent, attendanceRate, registeredSchools = 0 }: KPIGridProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* Card 1: Registered Schools */}
@@ -17,7 +18,7 @@ export function KPIGrid({ totalPresent, attendanceRate }: KPIGridProps) {
                             <p className="text-sm font-medium text-gray-500 mb-1">
                                 Registered Schools
                             </p>
-                            <h3 className="text-2xl font-bold text-gray-900">1</h3>
+                            <h3 className="text-2xl font-bold text-gray-900">{registeredSchools}</h3>
                         </div>
                         <div className="p-3 bg-blue-100 rounded-full">
                             <Building2 className="h-6 w-6 text-blue-600" />

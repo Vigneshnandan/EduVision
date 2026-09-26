@@ -89,7 +89,7 @@ class AuthRepository(
 
     private fun normalizeEmail(loginId: String): String {
         val clean = loginId.trim().lowercase().replace("\\s+".toRegex(), "")
-        return if (clean.contains("@")) clean else "$clean@eduvision.school"
+        return if (clean.contains("@")) clean else "$clean@teacher.eduvision.com"
     }
 
     suspend fun registerTeacher(
