@@ -60,13 +60,33 @@ export async function getDashboardData(): Promise<DashboardData | null> {
         status: schoolData?.status || 'active'
     };
 
-    // 2. Fetch Classes for this School
-    const { data: classesData } = await db
-        .from('classes')
-        .select('class_id, class_name')
+    // 2. Fetch Teachers and Classes for this School
+    const { data: teachersData } = await db
+        .from('teachers')
+        .select('*')
         .eq('school_id', schoolId);
 
-    const configuredClasses = (classesData || []).map((c: any) => c.class_name);
+    const teacherMap: Record<string, string> = {};
+    (teachersData || []).forEach((t: any) => {
+        const id = String(t.id ?? t.teacher_id ?? '');
+        const loginId = t.teacher_login_id ? String(t.teacher_login_id) : '';
+        const name = t.teacher_name || t.name || 'Staff Member';
+        if (id) teacherMap[id] = name;
+        if (loginId) teacherMap[loginId] = name;
+    });
+
+    const { data: classesData } = await db
+        .from('classes')
+        .select('class_id, class_name, class_teacher_id')
+        .eq('school_id', schoolId);
+
+    const classTeacherMap: Record<string, string> = {};
+    const configuredClasses = (classesData || []).map((c: any) => {
+        if (c.class_name && c.class_teacher_id) {
+            classTeacherMap[c.class_name] = teacherMap[String(c.class_teacher_id)] || 'Assigned';
+        }
+        return c.class_name;
+    });
 
     // 3. Fetch Enrolled Students for this School
     const { data: studentDetails } = await db
@@ -151,11 +171,17 @@ export async function getDashboardData(): Promise<DashboardData | null> {
             ? new Date(classLogs[0].timestamp).toISOString() 
             : new Date().toISOString();
 
+        const markedBy = classLogs.find(l => l.marked_by)?.marked_by;
+        const teacherName = classTeacherMap[className] 
+            || (markedBy ? teacherMap[markedBy] || markedBy : null) 
+            || "Unassigned";
+
         return {
             className,
             lastSync: latestTime,
             totalStudents: classTotal,
             presentCount: classPresent,
+            teacherName,
             students: classLogs,
         };
     });

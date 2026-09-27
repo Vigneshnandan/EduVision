@@ -10,9 +10,9 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight, User } from "lucide-react";
+import { ChevronDown, ChevronRight, User, UserCheck } from "lucide-react";
 import { format } from "date-fns";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface AttendanceLog {
     id: number;
@@ -30,24 +30,13 @@ export interface ClassBatch {
     lastSync: string;
     totalStudents: number;
     presentCount: number;
+    teacherName?: string;
     students: AttendanceLog[];
 }
 
 interface RecentActivityTableProps {
     batches: ClassBatch[];
 }
-
-// Helper to get mock teacher name based on class
-const getTeacherForClass = (className: string) => {
-    const teachers: Record<string, string> = {
-        "Class 10": "Mrs. Sharma",
-        "Class 10 A": "Mr. Verma",
-        "Class 9": "Ms. Gupta",
-        "Class 9 B": "Mr. Singh",
-        // Add more mappings or a default
-    };
-    return teachers[className] || "Staff Member";
-};
 
 export function RecentActivityTable({ batches }: RecentActivityTableProps) {
     const [expandedClasses, setExpandedClasses] = useState<string[]>([]);
@@ -71,9 +60,8 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                         <TableRow className="bg-gray-50 hover:bg-gray-50">
                             <TableHead className="w-[50px]"></TableHead>
                             <TableHead className="font-semibold text-gray-600">Time</TableHead>
-                            <TableHead className="font-semibold text-gray-600">School</TableHead>
-                            <TableHead className="font-semibold text-gray-600">Teacher</TableHead>
                             <TableHead className="font-semibold text-gray-600">Class</TableHead>
+                            <TableHead className="font-semibold text-gray-600">Class Teacher</TableHead>
                             <TableHead className="font-semibold text-gray-600">Attendance</TableHead>
                             <TableHead className="font-semibold text-gray-600">Status</TableHead>
                         </TableRow>
@@ -81,14 +69,14 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                     <TableBody>
                         {batches.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                                     No recent activity found today.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             batches.map((batch) => {
                                 const isExpanded = expandedClasses.includes(batch.className);
-                                const teacherName = getTeacherForClass(batch.className);
+                                const teacherName = batch.teacherName || "Unassigned";
                                 const attendanceRate =
                                     batch.totalStudents > 0
                                         ? Math.round((batch.presentCount / batch.totalStudents) * 100)
@@ -110,10 +98,17 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                                             <TableCell className="font-mono text-xs text-gray-600">
                                                 {format(new Date(batch.lastSync), "h:mm a")}
                                             </TableCell>
-                                            <TableCell className="text-gray-700">Govt High School</TableCell>
-                                            <TableCell className="text-gray-700">{teacherName}</TableCell>
-                                            <TableCell className="font-medium text-blue-700">
+                                            <TableCell className="font-semibold text-blue-700">
                                                 {batch.className}
+                                            </TableCell>
+                                            <TableCell className="text-gray-700">
+                                                {teacherName !== "Unassigned" ? (
+                                                    <span className="font-medium text-slate-800">{teacherName}</span>
+                                                ) : (
+                                                    <span className="text-xs text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                                        Unassigned
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="font-medium text-emerald-600">
                                                 {batch.presentCount} / {batch.totalStudents}{" "}
@@ -134,7 +129,7 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                                         {/* Expanded Row for Student Details */}
                                         {isExpanded && (
                                             <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
-                                                <TableCell colSpan={7} className="p-0 border-b">
+                                                <TableCell colSpan={6} className="p-0 border-b">
                                                     <div className="p-4 pl-14 pr-8 animate-in fade-in slide-in-from-top-1 duration-200">
                                                         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                                                             <User className="h-4 w-4" /> Student List ({batch.totalStudents})
@@ -144,18 +139,18 @@ export function RecentActivityTable({ batches }: RecentActivityTableProps) {
                                                                 <div
                                                                     key={student.id}
                                                                     className={`
-                                        flex items-center gap-3 p-3 rounded-lg border text-sm
-                                        ${student.is_present
+                                         flex items-center gap-3 p-3 rounded-lg border text-sm
+                                         ${student.is_present
                                                                             ? "bg-white border-emerald-100 shadow-sm"
                                                                             : "bg-red-50 border-red-100"
                                                                         }
-                                    `}
+                                     `}
                                                                 >
                                                                     <div
                                                                         className={`
-                                        w-2 h-2 rounded-full
-                                        ${student.is_present ? "bg-emerald-500" : "bg-red-500"}
-                                    `}
+                                         w-2 h-2 rounded-full
+                                         ${student.is_present ? "bg-emerald-500" : "bg-red-500"}
+                                     `}
                                                                     />
                                                                     <div className="flex flex-col">
                                                                         <div className="flex items-center gap-1.5">
