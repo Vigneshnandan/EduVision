@@ -42,6 +42,7 @@ export interface TeacherRecord {
     teacher_login_id: string;
     role: 'teacher' | 'school_admin';
     is_active: boolean;
+    auth_user_id?: string | null;
     created_at: string;
 }
 

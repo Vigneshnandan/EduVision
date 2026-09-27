@@ -1,19 +1,26 @@
 "use client"
 
-import { useState } from "react"
-import { editSchoolAction, changeSchoolStatusAction, updateSchoolSubscriptionAction } from "../actions"
+import { useState, useTransition } from "react"
+import { useSearchParams } from "next/navigation"
+import { editSchoolAction, changeSchoolStatusAction, updateSchoolSubscriptionAction, resetSchoolAdminPasswordAction } from "../actions"
 import { exportSchoolDataAction, purgeSchoolDataAction } from "./privacy-actions"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Shield, Users, School, GraduationCap, Clock, AlertTriangle, CheckCircle2, Lock, Save, Loader2, CreditCard, Sparkles, Calendar, Download, Trash2, FileJson, AlertCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Shield, Users, School, GraduationCap, Clock, AlertTriangle, CheckCircle2, Lock, Save, Loader2, CreditCard, Sparkles, Calendar, Download, Trash2, FileJson, AlertCircle, Copy, Check, ExternalLink, KeyRound, UserCheck } from "lucide-react"
 
 interface SchoolDetailClientProps {
     school: any
 }
 
 export function SchoolDetailClient({ school }: SchoolDetailClientProps) {
+    const searchParams = useSearchParams()
+    const isNewlyCreated = searchParams.get('created') === '1'
+    const initialAdminEmail = searchParams.get('admin_email') || school.admin_teacher?.teacher_login_id || school.contact_email || ''
+    const initialAdminPass = searchParams.get('admin_pass') || ''
+
     const [status, setStatus] = useState<'trial' | 'active' | 'suspended'>(school.status || 'trial')
     const [planTier, setPlanTier] = useState<'free' | 'paid'>(school.plan_tier || 'free')
     const [planRenewsAt, setPlanRenewsAt] = useState<string>(school.plan_renews_at || '')
@@ -23,6 +30,59 @@ export function SchoolDetailClient({ school }: SchoolDetailClientProps) {
     const [isExporting, setIsExporting] = useState(false)
     const [confirmCodeInput, setConfirmCodeInput] = useState('')
     const [isPurging, setIsPurging] = useState(false)
+
+    // Credentials & Password Reset States
+    const [copiedKey, setCopiedKey] = useState<string | null>(null)
+    const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false)
+    const [resetTargetLoginId, setResetTargetLoginId] = useState(initialAdminEmail)
+    const [newPasswordInput, setNewPasswordInput] = useState("")
+    const [isResettingPassword, setIsResettingPassword] = useState(false)
+    const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null)
+
+    const copyToClipboard = (text: string, key: string) => {
+        navigator.clipboard.writeText(text)
+        setCopiedKey(key)
+        setTimeout(() => setCopiedKey(null), 2000)
+    }
+
+    const handleCopyAllHandover = () => {
+        const adminEmail = school.admin_teacher?.teacher_login_id || initialAdminEmail
+        const text = `==============================
+EDUTechnova / EduVision School Credentials
+==============================
+Institution Name : ${school.school_name}
+School ID        : ${school.school_id}
+School Code      : ${school.school_code}
+Admin Login Email: ${adminEmail || 'Not provisioned'}
+${initialAdminPass ? `Initial Password : ${initialAdminPass}\n` : ''}
+School Dashboard : http://localhost:3001/login
+Android App      : EduVision Mobile (Select School: ${school.school_name} or enter ID: ${school.school_id})
+==============================`
+        copyToClipboard(text, 'all_handover')
+    }
+
+    const handleResetAdminPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newPasswordInput || newPasswordInput.length < 6) {
+            alert("Password must be at least 6 characters.")
+            return
+        }
+        setIsResettingPassword(true)
+        setResetSuccessMsg(null)
+        try {
+            await resetSchoolAdminPasswordAction(String(school.school_id), resetTargetLoginId, newPasswordInput)
+            setResetSuccessMsg(`Password successfully updated for ${resetTargetLoginId}!`)
+            setTimeout(() => {
+                setIsResetPasswordOpen(false)
+                setResetSuccessMsg(null)
+                setNewPasswordInput("")
+            }, 1800)
+        } catch (err: any) {
+            alert(err.message || "Failed to reset password")
+        } finally {
+            setIsResettingPassword(false)
+        }
+    }
 
     const handleExportData = async () => {
         setIsExporting(true)
@@ -103,8 +163,189 @@ export function SchoolDetailClient({ school }: SchoolDetailClientProps) {
         }
     }
 
+    const activeAdminLogin = school.admin_teacher?.teacher_login_id || initialAdminEmail || 'Not provisioned'
+
     return (
         <div className="space-y-6">
+            {/* Newly Created Onboarding Banner (if created=1) */}
+            {isNewlyCreated && (
+                <div className="p-4 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-base text-emerald-900">Institution & Admin Account Successfully Created!</h3>
+                            <p className="text-xs text-emerald-700">
+                                The school record and initial administrator login credentials have been provisioned in Supabase. Copy the credentials below to hand over to the school.
+                            </p>
+                        </div>
+                    </div>
+                    <Button 
+                        size="sm" 
+                        onClick={handleCopyAllHandover}
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white shrink-0 font-medium"
+                    >
+                        {copiedKey === 'all_handover' ? <Check className="h-3.5 w-3.5 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                        {copiedKey === 'all_handover' ? 'Copied to Clipboard!' : 'Copy Full Handover Details'}
+                    </Button>
+                </div>
+            )}
+
+            {/* Institutional Credentials & Access Card */}
+            <Card className="border-blue-200 bg-gradient-to-br from-white to-blue-50/30 shadow-sm overflow-hidden">
+                <CardHeader className="border-b bg-blue-50/50 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                <KeyRound className="h-4 w-4 text-blue-600" />
+                                Institutional Credentials & Access Portal
+                            </CardTitle>
+                            <CardDescription className="text-xs text-slate-500">
+                                Identifiers and administrator credentials required to log in to the School Dashboard and Android App.
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCopyAllHandover}
+                                className="h-8 text-xs font-medium bg-white"
+                            >
+                                {copiedKey === 'all_handover' ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                                Copy Credentials
+                            </Button>
+                            <a 
+                                href="http://localhost:3001/login" 
+                                target="_blank" 
+                                rel="noreferrer"
+                            >
+                                <Button size="sm" className="h-8 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white">
+                                    Open School Dashboard
+                                    <ExternalLink className="h-3.5 w-3.5 ml-1" />
+                                </Button>
+                            </a>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Item 1: School ID */}
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                            School ID (Database ID)
+                        </span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-2xl font-black font-mono text-blue-600">
+                                {school.school_id}
+                            </span>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-slate-500 hover:text-slate-900"
+                                onClick={() => copyToClipboard(String(school.school_id), 'school_id')}
+                                title="Copy School ID"
+                            >
+                                {copiedKey === 'school_id' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Used for tenant isolation and app registration</p>
+                    </div>
+
+                    {/* Item 2: School Code */}
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                            School Code
+                        </span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-xl font-bold font-mono text-slate-800">
+                                {school.school_code}
+                            </span>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-slate-500 hover:text-slate-900"
+                                onClick={() => copyToClipboard(school.school_code, 'school_code')}
+                                title="Copy School Code"
+                            >
+                                {copiedKey === 'school_code' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </Button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">Institutional short code</p>
+                    </div>
+
+                    {/* Item 3: Admin Login */}
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-1">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                            Admin Login ID / Email
+                        </span>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold font-mono text-slate-900 truncate max-w-[170px]" title={activeAdminLogin}>
+                                {activeAdminLogin}
+                            </span>
+                            {activeAdminLogin !== 'Not provisioned' && (
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-900"
+                                    onClick={() => copyToClipboard(activeAdminLogin, 'admin_login')}
+                                    title="Copy Login Email"
+                                >
+                                    {copiedKey === 'admin_login' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                </Button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                            {school.admin_teacher?.teacher_name || 'School Administrator'}
+                        </p>
+                    </div>
+
+                    {/* Item 4: Password / Reset */}
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs space-y-1">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                Password
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 text-[11px] text-blue-600 hover:text-blue-800 p-0"
+                                onClick={() => {
+                                    setResetTargetLoginId(activeAdminLogin !== 'Not provisioned' ? activeAdminLogin : '')
+                                    setIsResetPasswordOpen(true)
+                                }}
+                            >
+                                Reset / Set
+                            </Button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            {initialAdminPass ? (
+                                <span className="text-sm font-bold font-mono text-emerald-600">
+                                    {initialAdminPass}
+                                </span>
+                            ) : (
+                                <span className="text-xs font-mono text-slate-400">
+                                    •••••••••••
+                                </span>
+                            )}
+                            {initialAdminPass && (
+                                <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 text-slate-500 hover:text-slate-900"
+                                    onClick={() => copyToClipboard(initialAdminPass, 'admin_pass')}
+                                    title="Copy Password"
+                                >
+                                    {copiedKey === 'admin_pass' ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                                </Button>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                            {initialAdminPass ? 'Provided at registration' : 'Auth user configured in Supabase'}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card className="bg-white border-slate-200">
@@ -565,6 +806,77 @@ export function SchoolDetailClient({ school }: SchoolDetailClientProps) {
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Reset / Set Admin Password Dialog */}
+            <Dialog open={isResetPasswordOpen} onOpenChange={setIsResetPasswordOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5 text-blue-600" />
+                            Set School Admin Password
+                        </DialogTitle>
+                        <DialogDescription>
+                            Update or provision the Supabase Auth login password for the primary administrator of {school.school_name}.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {resetSuccessMsg ? (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-md text-xs font-semibold flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            {resetSuccessMsg}
+                        </div>
+                    ) : (
+                        <form onSubmit={handleResetAdminPassword} className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="reset_login_id">Admin Login ID / Email</Label>
+                                <Input
+                                    id="reset_login_id"
+                                    value={resetTargetLoginId}
+                                    onChange={(e) => setResetTargetLoginId(e.target.value)}
+                                    placeholder="e.g. principal@school.edu"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="reset_password">New Password</Label>
+                                <Input
+                                    id="reset_password"
+                                    type="text"
+                                    value={newPasswordInput}
+                                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                                    placeholder="Enter at least 6 characters"
+                                    className="font-mono text-sm"
+                                    required
+                                    minLength={6}
+                                />
+                                <p className="text-[11px] text-slate-500">
+                                    This will immediately update their login password for both School Dashboard and Mobile App.
+                                </p>
+                            </div>
+
+                            <DialogFooter className="pt-2">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => setIsResetPasswordOpen(false)}
+                                    disabled={isResettingPassword}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    disabled={isResettingPassword}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                    {isResettingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Password
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

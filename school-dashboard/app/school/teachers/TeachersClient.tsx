@@ -2,14 +2,23 @@
 
 import { useState } from "react"
 import { TeacherRecord } from "@/lib/types"
-import { toggleStatusAction, changeRoleAction, addTeacherAction } from "./actions"
+import { toggleStatusAction, changeRoleAction, addTeacherAction, setTeacherPasswordAction } from "./actions"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Users, UserCheck, ShieldAlert, ShieldCheck, Plus, Power, Shield, Loader2 } from "lucide-react"
+import { Users, UserCheck, ShieldAlert, ShieldCheck, Plus, Power, Shield, Loader2, KeyRound, Copy, Check, Eye, EyeOff, RefreshCw, Smartphone } from "lucide-react"
+
+function generateRandomPassword() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%"
+    let pass = ""
+    for (let i = 0; i < 9; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return pass
+}
 
 interface TeachersClientProps {
     initialTeachers: TeacherRecord[]
@@ -22,11 +31,40 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
+    // Add Teacher Form State
+    const [addPassword, setAddPassword] = useState("TeachPass@2026")
+    const [showAddPassword, setShowAddPassword] = useState(false)
+
+    // Created Credentials Success Dialog State
+    const [createdCredentials, setCreatedCredentials] = useState<{
+        name: string
+        loginId: string
+        password?: string
+        schoolId?: string
+    } | null>(null)
+
+    // Set / Reset Password Dialog State
+    const [isSetPasswordOpen, setIsSetPasswordOpen] = useState(false)
+    const [targetTeacher, setTargetTeacher] = useState<TeacherRecord | null>(null)
+    const [targetPassword, setTargetPassword] = useState("")
+    const [showTargetPassword, setShowTargetPassword] = useState(false)
+    const [isSettingPassword, setIsSettingPassword] = useState(false)
+
+    // Copied feedback
+    const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+    const copyToClipboard = (text: string, key: string) => {
+        navigator.clipboard.writeText(text)
+        setCopiedKey(key)
+        setTimeout(() => setCopiedKey(null), 2000)
+    }
+
     // Stats
     const totalTeachers = teachers.length
     const activeCount = teachers.filter(t => t.is_active).length
     const inactiveCount = totalTeachers - activeCount
     const adminCount = teachers.filter(t => t.role === 'school_admin').length
+    const appReadyCount = teachers.filter(t => Boolean(t.auth_user_id)).length
 
     const handleToggleStatus = async (teacherId: string, currentStatus: boolean) => {
         setActionLoadingId(teacherId)
@@ -63,29 +101,75 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
         e.preventDefault()
         setIsSubmitting(true)
         const formData = new FormData(e.currentTarget)
-        try {
-            await addTeacherAction(formData)
-            const name = formData.get('name') as string
-            const loginId = formData.get('loginId') as string
-            const role = (formData.get('role') as 'teacher' | 'school_admin') || 'teacher'
+        const name = formData.get('name') as string
+        const loginId = formData.get('loginId') as string
+        const password = formData.get('password') as string
+        const role = (formData.get('role') as 'teacher' | 'school_admin') || 'teacher'
 
-            setTeachers(prev => [
-                {
-                    teacher_id: `temp-${Date.now()}`,
-                    school_id: '',
-                    teacher_name: name,
-                    teacher_login_id: loginId,
-                    role: role,
-                    is_active: true,
-                    created_at: new Date().toISOString()
-                },
-                ...prev
-            ])
+        try {
+            const result = await addTeacherAction(formData)
+            
+            const newTeacher: TeacherRecord = {
+                teacher_id: result?.id ? String(result.id) : `temp-${Date.now()}`,
+                school_id: result?.school_id ? String(result.school_id) : (teachers[0]?.school_id || ''),
+                teacher_name: name,
+                teacher_login_id: loginId,
+                role: role,
+                is_active: true,
+                auth_user_id: result?.auth_created ? 'provisioned' : (password ? 'provisioned' : null),
+                created_at: new Date().toISOString()
+            }
+
+            setTeachers(prev => [newTeacher, ...prev])
             setIsAddOpen(false)
+
+            // Open credentials dialog if password was set
+            if (password) {
+                setCreatedCredentials({
+                    name,
+                    loginId,
+                    password,
+                    schoolId: newTeacher.school_id
+                })
+            }
         } catch (err: any) {
             alert(err.message || "Failed to register teacher")
         } finally {
             setIsSubmitting(false)
+        }
+    }
+
+    const handleSetPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!targetTeacher) return
+        if (!targetPassword || targetPassword.length < 6) {
+            alert("Password must be at least 6 characters.")
+            return
+        }
+
+        setIsSettingPassword(true)
+        try {
+            await setTeacherPasswordAction(targetTeacher.teacher_id, targetTeacher.teacher_login_id, targetPassword)
+            
+            // Mark auth_user_id as provisioned in local state
+            setTeachers(prev => prev.map(t => 
+                t.teacher_id === targetTeacher.teacher_id ? { ...t, auth_user_id: 'provisioned' } : t
+            ))
+
+            setCreatedCredentials({
+                name: targetTeacher.teacher_name,
+                loginId: targetTeacher.teacher_login_id,
+                password: targetPassword,
+                schoolId: targetTeacher.school_id
+            })
+
+            setIsSetPasswordOpen(false)
+            setTargetTeacher(null)
+            setTargetPassword("")
+        } catch (err: any) {
+            alert(err.message || "Failed to set password")
+        } finally {
+            setIsSettingPassword(false)
         }
     }
 
@@ -108,23 +192,11 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                 <Card className="bg-white border-slate-200">
                     <CardContent className="p-5 flex items-center gap-4">
                         <div className="h-12 w-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                            <UserCheck className="h-6 w-6" />
+                            <Smartphone className="h-6 w-6" />
                         </div>
                         <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Staff</p>
-                            <h3 className="text-2xl font-bold text-slate-900">{activeCount}</h3>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-white border-slate-200">
-                    <CardContent className="p-5 flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center">
-                            <ShieldAlert className="h-6 w-6" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Deactivated</p>
-                            <h3 className="text-2xl font-bold text-slate-900">{inactiveCount}</h3>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">App Login Ready</p>
+                            <h3 className="text-2xl font-bold text-slate-900">{appReadyCount}</h3>
                         </div>
                     </CardContent>
                 </Card>
@@ -140,6 +212,18 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                         </div>
                     </CardContent>
                 </Card>
+
+                <Card className="bg-white border-slate-200">
+                    <CardContent className="p-5 flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-xl bg-slate-50 text-slate-600 flex items-center justify-center">
+                            <UserCheck className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active Staff</p>
+                            <h3 className="text-2xl font-bold text-slate-900">{activeCount}</h3>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Teacher Roster Table */}
@@ -148,12 +232,19 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                     <div>
                         <CardTitle className="text-xl font-bold text-slate-900">Faculty & Staff Roster</CardTitle>
                         <CardDescription>
-                            All registered educators for this institution. Logins are synchronized with the mobile attendance app.
+                            Manage teachers, authorize accounts for the EduVision Android App, and assign institutional roles.
                         </CardDescription>
                     </div>
                     {isSchoolAdmin && (
-                        <Button onClick={() => setIsAddOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                            <Plus className="h-4 w-4 mr-2" /> Add Teacher
+                        <Button 
+                            onClick={() => {
+                                setAddPassword(generateRandomPassword())
+                                setIsAddOpen(true)
+                            }} 
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Register Faculty Member
                         </Button>
                     )}
                 </CardHeader>
@@ -162,20 +253,21 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                         <TableHeader>
                             <TableRow className="bg-slate-50/70">
                                 <TableHead className="font-semibold text-slate-700">Name</TableHead>
-                                <TableHead className="font-semibold text-slate-700">Login ID / Email</TableHead>
+                                <TableHead className="font-semibold text-slate-700">Login ID / Username</TableHead>
+                                <TableHead className="font-semibold text-slate-700">App Login</TableHead>
                                 <TableHead className="font-semibold text-slate-700">Role</TableHead>
                                 <TableHead className="font-semibold text-slate-700">Status</TableHead>
                                 <TableHead className="font-semibold text-slate-700">Registered</TableHead>
                                 <TableHead className="text-right font-semibold text-slate-700">
-                                    {isSchoolAdmin ? "Admin Actions" : "Access Level"}
+                                    {isSchoolAdmin ? "Faculty Actions" : "Access Level"}
                                 </TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {teachers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center py-10 text-slate-500">
-                                        No teachers registered for this school yet.
+                                    <TableCell colSpan={7} className="text-center py-10 text-slate-500">
+                                        No teachers registered for this school yet. Click &quot;Register Faculty Member&quot; to onboard.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -188,6 +280,17 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                                             </TableCell>
                                             <TableCell className="font-mono text-xs text-slate-600">
                                                 {teacher.teacher_login_id}
+                                            </TableCell>
+                                            <TableCell>
+                                                {teacher.auth_user_id ? (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        <Smartphone className="h-3 w-3" /> App Ready
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                                        <KeyRound className="h-3 w-3" /> No Password Set
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell>
                                                 {teacher.role === 'school_admin' ? (
@@ -216,7 +319,24 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {isSchoolAdmin ? (
-                                                    <div className="flex items-center justify-end gap-2">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        {/* Set / Reset Password button */}
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={isLoading}
+                                                            onClick={() => {
+                                                                setTargetTeacher(teacher)
+                                                                setTargetPassword(generateRandomPassword())
+                                                                setIsSetPasswordOpen(true)
+                                                            }}
+                                                            className="text-xs h-8 text-blue-700 border-blue-200 hover:bg-blue-50"
+                                                            title="Set password for EduVision Android App & Dashboard"
+                                                        >
+                                                            <KeyRound className="h-3.5 w-3.5 mr-1" />
+                                                            {teacher.auth_user_id ? 'Reset Pass' : 'Set Pass'}
+                                                        </Button>
+
                                                         {/* Role toggle button */}
                                                         <Button
                                                             variant="outline"
@@ -259,24 +379,73 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                 </CardContent>
             </Card>
 
-            {/* Add Teacher Modal */}
+            {/* Modal 1: Register New Faculty with Password */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[460px]">
                     <DialogHeader>
-                        <DialogTitle>Register New Faculty</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Plus className="h-5 w-5 text-blue-600" />
+                            Register New Faculty Member
+                        </DialogTitle>
                         <DialogDescription>
-                            Create a teacher profile. The teacher can use this Login ID on the EduVision Android App.
+                            Create a teacher profile and initial login password for the EduVision Android App and School Dashboard.
                         </DialogDescription>
                     </DialogHeader>
                     <form onSubmit={handleAdd} className="space-y-4 py-2">
                         <div className="space-y-2">
-                            <Label htmlFor="name">Teacher Full Name</Label>
+                            <Label htmlFor="name">Teacher Full Name *</Label>
                             <Input id="name" name="name" placeholder="e.g. Ramesh Kumar" required />
                         </div>
+
                         <div className="space-y-2">
-                            <Label htmlFor="loginId">Login ID / Email</Label>
-                            <Input id="loginId" name="loginId" type="email" placeholder="e.g. ramesh@school.edu" required />
+                            <Label htmlFor="loginId">Login ID / Email Address *</Label>
+                            <Input 
+                                id="loginId" 
+                                name="loginId" 
+                                placeholder="e.g. ramesh@school.edu or ramesh.kumar" 
+                                required 
+                            />
+                            <p className="text-[11px] text-slate-500">
+                                Used to sign in on the EduVision Android App.
+                            </p>
                         </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Initial Password *</Label>
+                                <button
+                                    type="button"
+                                    onClick={() => setAddPassword(generateRandomPassword())}
+                                    className="text-[11px] text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium"
+                                >
+                                    <RefreshCw className="h-3 w-3" /> Auto-generate
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    id="password"
+                                    name="password"
+                                    type={showAddPassword ? "text" : "password"}
+                                    value={addPassword}
+                                    onChange={(e) => setAddPassword(e.target.value)}
+                                    placeholder="Enter at least 6 characters"
+                                    className="pr-10 font-mono text-sm"
+                                    required
+                                    minLength={6}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddPassword(!showAddPassword)}
+                                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                                >
+                                    {showAddPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-slate-500">
+                                Minimum 6 characters. You can copy the credentials once created.
+                            </p>
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor="role">Institutional Role</Label>
                             <select
@@ -285,20 +454,174 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                                 defaultValue="teacher"
                                 className="w-full h-10 px-3 py-2 border rounded-md text-sm bg-white border-input"
                             >
-                                <option value="teacher">Standard Teacher</option>
-                                <option value="school_admin">School Administrator</option>
+                                <option value="teacher">Standard Teacher (Attendance & Class Rosters)</option>
+                                <option value="school_admin">School Administrator (Full Institutional Access)</option>
                             </select>
                         </div>
+
                         <DialogFooter className="pt-2">
-                            <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+                            <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} disabled={isSubmitting}>
                                 Cancel
                             </Button>
                             <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Add to Roster
+                                Create Account & Set Login
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal 2: Set / Reset Password for Existing Teacher */}
+            <Dialog open={isSetPasswordOpen} onOpenChange={setIsSetPasswordOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5 text-blue-600" />
+                            Set App Password for Faculty
+                        </DialogTitle>
+                        <DialogDescription>
+                            Configure or update login credentials for {targetTeacher?.teacher_name}. They can use this password on the EduVision Android App.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {targetTeacher && (
+                        <form onSubmit={handleSetPassword} className="space-y-4 py-2">
+                            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                                <span className="text-[11px] font-semibold text-slate-500 uppercase">Faculty Member</span>
+                                <p className="text-sm font-bold text-slate-900">{targetTeacher.teacher_name}</p>
+                                <p className="text-xs font-mono text-slate-600">Login ID: {targetTeacher.teacher_login_id}</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="target_password">New Password *</Label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTargetPassword(generateRandomPassword())}
+                                        className="text-[11px] text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium"
+                                    >
+                                        <RefreshCw className="h-3 w-3" /> Auto-generate
+                                    </button>
+                                </div>
+                                <div className="relative">
+                                    <Input
+                                        id="target_password"
+                                        type={showTargetPassword ? "text" : "password"}
+                                        value={targetPassword}
+                                        onChange={(e) => setTargetPassword(e.target.value)}
+                                        placeholder="Enter at least 6 characters"
+                                        className="pr-10 font-mono text-sm"
+                                        required
+                                        minLength={6}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTargetPassword(!showTargetPassword)}
+                                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                                    >
+                                        {showTargetPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                </div>
+                                <p className="text-[11px] text-slate-500">
+                                    This immediately updates their authentication credentials in Supabase.
+                                </p>
+                            </div>
+
+                            <DialogFooter className="pt-2">
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    onClick={() => setIsSetPasswordOpen(false)}
+                                    disabled={isSettingPassword}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    disabled={isSettingPassword}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                >
+                                    {isSettingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save App Password
+                                </Button>
+                            </DialogFooter>
+                        </form>
+                    )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal 3: Credentials Ready Handover Summary */}
+            <Dialog open={Boolean(createdCredentials)} onOpenChange={(open) => !open && setCreatedCredentials(null)}>
+                <DialogContent className="sm:max-w-[460px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-emerald-800">
+                            <Check className="h-5 w-5 text-emerald-600" />
+                            Faculty Credentials Ready!
+                        </DialogTitle>
+                        <DialogDescription>
+                            The teacher account has been configured. Copy these details and share them with the teacher.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {createdCredentials && (
+                        <div className="space-y-4 py-2">
+                            <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-3">
+                                <div>
+                                    <span className="text-[11px] font-semibold text-emerald-700 uppercase">Teacher Name</span>
+                                    <p className="text-sm font-bold text-slate-900">{createdCredentials.name}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span className="text-[11px] font-semibold text-emerald-700 uppercase">Login ID / Username</span>
+                                        <p className="text-sm font-mono font-bold text-slate-900">{createdCredentials.loginId}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-[11px] font-semibold text-emerald-700 uppercase">Password</span>
+                                        <p className="text-sm font-mono font-bold text-emerald-700">{createdCredentials.password}</p>
+                                    </div>
+                                </div>
+                                {createdCredentials.schoolId && (
+                                    <div>
+                                        <span className="text-[11px] font-semibold text-emerald-700 uppercase">School ID</span>
+                                        <p className="text-sm font-mono font-bold text-blue-700">{createdCredentials.schoolId}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <p className="text-xs text-slate-500">
+                                📱 <strong>To login on Android App:</strong> Open EduVision App, select/enter School ID, then type Login ID and Password above.
+                            </p>
+
+                            <DialogFooter className="pt-2 flex sm:justify-between items-center">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const handover = `EduVision Faculty Login Credentials
+-----------------------------------
+Teacher Name : ${createdCredentials.name}
+Login ID     : ${createdCredentials.loginId}
+Password     : ${createdCredentials.password}
+${createdCredentials.schoolId ? `School ID    : ${createdCredentials.schoolId}\n` : ''}
+Use these credentials on the EduVision Android App or School Dashboard.`
+                                        copyToClipboard(handover, 'teacher_handover')
+                                    }}
+                                    className="text-xs"
+                                >
+                                    {copiedKey === 'teacher_handover' ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                                    {copiedKey === 'teacher_handover' ? 'Copied Handover!' : 'Copy Credentials'}
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    onClick={() => setCreatedCredentials(null)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                >
+                                    Done
+                                </Button>
+                            </DialogFooter>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
