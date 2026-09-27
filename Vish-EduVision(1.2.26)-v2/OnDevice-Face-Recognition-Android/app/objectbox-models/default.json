@@ -87,7 +87,7 @@
     },
     {
       "id": "3:4314915301581714600",
-      "lastPropertyId": "8:2265178134719502752",
+      "lastPropertyId": "9:8869100050849478822",
       "name": "AttendanceRecord",
       "properties": [
         {
@@ -131,6 +131,11 @@
         {
           "id": "8:2265178134719502752",
           "name": "markedByTeacherId",
+          "type": 9
+        },
+        {
+          "id": "9:8869100050849478822",
+          "name": "correctionReason",
           "type": 9
         }
       ],

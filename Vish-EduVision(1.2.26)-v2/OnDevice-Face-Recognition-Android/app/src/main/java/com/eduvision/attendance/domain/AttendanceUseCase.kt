@@ -61,6 +61,7 @@ class AttendanceUseCase {
                     existing.isPresent = true
                     existing.isManual = draft.isManual
                     existing.markedByTeacherId = draft.markedByTeacherId
+                    existing.correctionReason = draft.correctionReason
                     existing.timestamp = System.currentTimeMillis()
                     recordsToPut.add(existing)
                 } else {
@@ -72,7 +73,8 @@ class AttendanceUseCase {
                             isPresent = true,
                             studentClass = studentClass,
                             isManual = draft.isManual,
-                            markedByTeacherId = draft.markedByTeacherId
+                            markedByTeacherId = draft.markedByTeacherId,
+                            correctionReason = draft.correctionReason
                         )
                     )
                 }

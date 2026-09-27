@@ -19,7 +19,8 @@ data class CloudAttendanceRecord(
     @SerializedName("timestamp") val timestamp: Long,
     @SerializedName("is_manual") val isManual: Boolean = false,
     @SerializedName("marked_by") val markedBy: String? = null,
-    @SerializedName("school_id") val schoolId: String? = null
+    @SerializedName("school_id") val schoolId: String? = null,
+    @SerializedName("correction_reason") val correctionReason: String? = null
 )
 
 /**

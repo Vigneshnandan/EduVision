@@ -14,7 +14,8 @@ data class DraftEntry(
     val studentId: Long,
     val isPresent: Boolean,
     val isManual: Boolean = false,
-    val markedByTeacherId: String = ""
+    val markedByTeacherId: String = "",
+    val correctionReason: String = ""
 )
 
 /**
@@ -58,16 +59,17 @@ class AttendanceDraftUseCase {
     }
 
     /**
-     * Toggles a student's presence state in the draft, marking it as a manual edit.
+     * Toggles a student's presence state in the draft, marking it as a manual edit with an optional reason.
      */
-    fun togglePresence(studentId: Long, teacherId: String = "") {
+    fun togglePresence(studentId: Long, teacherId: String = "", reason: String = "") {
         val current = draftMap[studentId]
         val currentPresent = current?.isPresent ?: false
         draftMap[studentId] = DraftEntry(
             studentId = studentId,
             isPresent = !currentPresent,
             isManual = true,
-            markedByTeacherId = teacherId
+            markedByTeacherId = teacherId,
+            correctionReason = reason
         )
     }
 
