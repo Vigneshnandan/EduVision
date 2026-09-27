@@ -50,7 +50,20 @@ class CloudSyncRepository(
                     .addHeader("Authorization", authHeader)
                     .addHeader("Content-Type", "application/json")
                     .build()
-                chain.proceed(request)
+
+                val response = chain.proceed(request)
+
+                if (response.code == 401 || response.code == 400) {
+                    response.close()
+                    val retryRequest = chain.request().newBuilder()
+                        .addHeader("apikey", API_KEY)
+                        .addHeader("Authorization", "Bearer $API_KEY")
+                        .addHeader("Content-Type", "application/json")
+                        .build()
+                    chain.proceed(retryRequest)
+                } else {
+                    response
+                }
             }
             .build()
 
@@ -150,7 +163,7 @@ class CloudSyncRepository(
             // Scope push to the logged-in teacher's school_id only
             val cloudRecords = allAttendance.mapNotNull { attendance ->
                 val person = personBox.get(attendance.studentId)
-                if (person != null && person.schoolId == currentSchoolId) {
+                if (person != null && (person.schoolId.isNullOrBlank() || person.schoolId == currentSchoolId)) {
                     CloudAttendanceRecord(
                         studentId = person.personID,
                         name = person.personName,
