@@ -1,28 +1,44 @@
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { RefreshCw, School } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardHeaderProps {
+    schoolName?: string;
+    schoolId?: string;
     lastSync: string;
     onRefresh: () => void;
     isLoading: boolean;
 }
 
-export function DashboardHeader({ lastSync, onRefresh, isLoading }: DashboardHeaderProps) {
+export function DashboardHeader({ 
+    schoolName, 
+    schoolId, 
+    lastSync, 
+    onRefresh, 
+    isLoading 
+}: DashboardHeaderProps) {
     return (
         <header className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-10">
             <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex justify-between items-center h-16">
-                    {/* Left Side: Title & Branding */}
+                    {/* Left Side: School Branding */}
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg">
-                            <ShieldCheck className="h-6 w-6 text-blue-600" />
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                            <School className="h-6 w-6" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                                Government Attendance Dashboard
-                            </h1>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                                    {schoolName || "Institutional Attendance Dashboard"}
+                                </h1>
+                                {schoolId && (
+                                    <Badge variant="outline" className="text-xs bg-slate-50 text-slate-600 border-slate-300 font-mono">
+                                        ID: {schoolId}
+                                    </Badge>
+                                )}
+                            </div>
                             <p className="text-xs text-blue-600 font-medium tracking-wide uppercase">
-                                Real-time Monitoring
+                                Real-time School Attendance Monitoring
                             </p>
                         </div>
                     </div>
