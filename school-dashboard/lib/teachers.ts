@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { getSessionSchoolId } from "@/lib/students";
+import { createAdminServiceClient, isServiceRoleConfigured } from "@/lib/supabase-service";
 import { TeacherRecord } from "./types";
 
 export async function checkIsSchoolAdmin(): Promise<boolean> {
@@ -44,12 +45,13 @@ export async function getSchoolTeachers(): Promise<{ teachers: TeacherRecord[]; 
     }
 
     const mapped: TeacherRecord[] = (data || []).map((t: any) => ({
-        teacher_id: t.teacher_id || t.id,
-        school_id: t.school_id,
+        teacher_id: String(t.teacher_id || t.id),
+        school_id: String(t.school_id),
         teacher_name: t.teacher_name || t.name || 'Staff Member',
         teacher_login_id: t.teacher_login_id || t.email || '',
         role: t.role || 'teacher',
         is_active: t.is_active ?? true,
+        auth_user_id: t.auth_user_id || null,
         created_at: t.created_at
     }));
 
@@ -94,7 +96,12 @@ export async function updateTeacherRole(teacherId: string, newRole: 'teacher' | 
     if (error) throw error;
 }
 
-export async function createTeacherRecord(name: string, loginId: string, role: 'teacher' | 'school_admin' = 'teacher') {
+export async function createTeacherRecord(
+    name: string, 
+    loginId: string, 
+    password?: string, 
+    role: 'teacher' | 'school_admin' = 'teacher'
+) {
     const isAdmin = await checkIsSchoolAdmin();
     if (!isAdmin) {
         throw new Error("Unauthorized: Only a school administrator can add teachers.");
@@ -104,15 +111,175 @@ export async function createTeacherRecord(name: string, loginId: string, role: '
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) throw new Error("Not authenticated");
 
-    const { error } = await supabase
+    // Fetch school name for mobile app metadata
+    const { data: school } = await supabase
+        .from('schools')
+        .select('school_name, school_code')
+        .eq('school_id', schoolId)
+        .maybeSingle();
+
+    const rawLoginId = loginId.trim().toLowerCase();
+    const normalizedEmail = rawLoginId.includes('@') ? rawLoginId : `${rawLoginId}@eduvision.school`;
+
+    let authUserId: string | null = null;
+
+    // If password provided and service role key is present, provision in Supabase Auth
+    if (password && isServiceRoleConfigured()) {
+        try {
+            const adminClient = createAdminServiceClient();
+            const { data: usersData } = await adminClient.auth.admin.listUsers();
+            const existingUser = usersData?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+
+            if (existingUser) {
+                authUserId = existingUser.id;
+                await adminClient.auth.admin.updateUserById(existingUser.id, {
+                    password: password,
+                    user_metadata: {
+                        teacher_name: name.trim(),
+                        teacher_login_id: rawLoginId,
+                        school_id: String(schoolId),
+                        school_name: school?.school_name || '',
+                        school_code: school?.school_code || '',
+                        role: role
+                    },
+                    app_metadata: {
+                        role: role
+                    }
+                });
+            } else {
+                const { data: newAuth, error: authError } = await adminClient.auth.admin.createUser({
+                    email: normalizedEmail,
+                    password: password,
+                    email_confirm: true,
+                    user_metadata: {
+                        teacher_name: name.trim(),
+                        teacher_login_id: rawLoginId,
+                        school_id: String(schoolId),
+                        school_name: school?.school_name || '',
+                        school_code: school?.school_code || '',
+                        role: role
+                    },
+                    app_metadata: {
+                        role: role
+                    }
+                });
+
+                if (authError) {
+                    console.error("Warning: Error creating auth user for teacher:", authError);
+                } else if (newAuth?.user) {
+                    authUserId = newAuth.user.id;
+                }
+            }
+        } catch (authErr) {
+            console.error("Admin user provisioning error:", authErr);
+        }
+    }
+
+    const { data: inserted, error } = await supabase
         .from('teachers')
         .insert({
             school_id: schoolId,
             teacher_name: name.trim(),
-            teacher_login_id: loginId.trim().toLowerCase(),
+            teacher_login_id: rawLoginId,
             role: role,
+            auth_user_id: authUserId,
             is_active: true
-        });
+        })
+        .select()
+        .single();
 
     if (error) throw error;
+    return {
+        ...inserted,
+        auth_created: Boolean(authUserId)
+    };
+}
+
+export async function setTeacherPassword(teacherId: string, teacherLoginId: string, newPassword: string) {
+    const isAdmin = await checkIsSchoolAdmin();
+    if (!isAdmin) {
+        throw new Error("Unauthorized: Only a school administrator can manage faculty credentials.");
+    }
+    if (!newPassword || newPassword.length < 6) {
+        throw new Error("Password must be at least 6 characters.");
+    }
+
+    const supabase = await createClient();
+    const schoolId = await getSessionSchoolId(supabase);
+    if (!schoolId) throw new Error("Not authenticated");
+
+    const { data: school } = await supabase
+        .from('schools')
+        .select('school_name, school_code')
+        .eq('school_id', schoolId)
+        .maybeSingle();
+
+    const { data: teacher } = await supabase
+        .from('teachers')
+        .select('*')
+        .eq('school_id', schoolId)
+        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`)
+        .maybeSingle();
+
+    if (!teacher) throw new Error("Teacher record not found.");
+
+    const rawLoginId = (teacherLoginId || teacher.teacher_login_id).trim().toLowerCase();
+    const normalizedEmail = rawLoginId.includes('@') ? rawLoginId : `${rawLoginId}@eduvision.school`;
+
+    const adminClient = createAdminServiceClient();
+    let authUserId = teacher.auth_user_id;
+
+    if (!authUserId) {
+        const { data: usersData } = await adminClient.auth.admin.listUsers();
+        const matched = usersData?.users?.find(u => u.email?.toLowerCase() === normalizedEmail);
+        if (matched) authUserId = matched.id;
+    }
+
+    if (authUserId) {
+        const { error } = await adminClient.auth.admin.updateUserById(authUserId, {
+            password: newPassword,
+            user_metadata: {
+                teacher_name: teacher.teacher_name,
+                teacher_login_id: rawLoginId,
+                school_id: String(schoolId),
+                school_name: school?.school_name || '',
+                school_code: school?.school_code || '',
+                role: teacher.role
+            },
+            app_metadata: {
+                role: teacher.role
+            }
+        });
+        if (error) throw error;
+    } else {
+        const { data: newAuth, error: createError } = await adminClient.auth.admin.createUser({
+            email: normalizedEmail,
+            password: newPassword,
+            email_confirm: true,
+            user_metadata: {
+                teacher_name: teacher.teacher_name,
+                teacher_login_id: rawLoginId,
+                school_id: String(schoolId),
+                school_name: school?.school_name || '',
+                school_code: school?.school_code || '',
+                role: teacher.role
+            },
+            app_metadata: {
+                role: teacher.role
+            }
+        });
+        if (createError) throw createError;
+        if (newAuth?.user) {
+            authUserId = newAuth.user.id;
+        }
+    }
+
+    // Update teacher record with auth_user_id
+    const { error: updateError } = await supabase
+        .from('teachers')
+        .update({ auth_user_id: authUserId })
+        .eq('school_id', schoolId)
+        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`);
+
+    if (updateError) throw updateError;
 }
