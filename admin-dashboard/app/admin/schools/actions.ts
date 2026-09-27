@@ -1,6 +1,6 @@
 'use server'
 
-import { registerSchoolRecord, updateSchoolRecord, updateSchoolStatusRecord, updateSchoolSubscriptionRecord } from '@/lib/admin-schools'
+import { registerSchoolRecord, updateSchoolRecord, updateSchoolStatusRecord, updateSchoolSubscriptionRecord, resetSchoolAdminPassword } from '@/lib/admin-schools'
 import { logAdminAction } from '@/lib/admin-audit'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -15,6 +15,10 @@ export async function createSchoolAction(formData: FormData) {
     const planTier = (formData.get('plan_tier') as any) || 'free'
     const planRenewsAt = (formData.get('plan_renews_at') as string) || undefined
 
+    const adminName = formData.get('admin_name') as string
+    const adminEmail = formData.get('admin_email') as string
+    const adminPassword = formData.get('admin_password') as string
+
     if (!schoolName) throw new Error('School name is required')
 
     const newSchool = await registerSchoolRecord({
@@ -25,7 +29,10 @@ export async function createSchoolAction(formData: FormData) {
         contact_phone: contactPhone,
         status,
         plan_tier: planTier,
-        plan_renews_at: planRenewsAt
+        plan_renews_at: planRenewsAt,
+        admin_name: adminName,
+        admin_email: adminEmail,
+        admin_password: adminPassword
     })
 
     await logAdminAction({
@@ -36,12 +43,32 @@ export async function createSchoolAction(formData: FormData) {
             school_name: schoolName,
             school_code: newSchool.school_code,
             status,
-            plan_tier: planTier
+            plan_tier: planTier,
+            admin_email: adminEmail || null
         }
     })
 
     revalidatePath('/admin/schools')
-    redirect(`/admin/schools/${newSchool.school_id}`)
+    const redirectUrl = adminEmail && adminPassword 
+        ? `/admin/schools/${newSchool.school_id}?created=1&admin_email=${encodeURIComponent(adminEmail)}&admin_pass=${encodeURIComponent(adminPassword)}`
+        : `/admin/schools/${newSchool.school_id}?created=1`
+    redirect(redirectUrl)
+}
+
+export async function resetSchoolAdminPasswordAction(schoolId: string, loginId: string, newPassword: string) {
+    if (!newPassword || newPassword.length < 6) {
+        throw new Error('Password must be at least 6 characters long.')
+    }
+    await resetSchoolAdminPassword(schoolId, loginId, newPassword)
+
+    await logAdminAction({
+        action: 'school_admin_password_reset',
+        targetType: 'school',
+        targetId: schoolId,
+        details: { login_id: loginId }
+    })
+
+    revalidatePath(`/admin/schools/${schoolId}`)
 }
 
 export async function editSchoolAction(schoolId: string, formData: FormData) {
