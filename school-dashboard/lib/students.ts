@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { createAdminServiceClient, isServiceRoleConfigured } from "@/lib/supabase-service";
 import { StudentProfile } from "./types";
 
 export type { StudentProfile };
@@ -9,7 +10,7 @@ export async function getSessionSchoolId(supabase: any) {
     
     // Check metadata first
     if (user.user_metadata?.school_id) {
-        return user.user_metadata.school_id
+        return String(user.user_metadata.school_id)
     }
 
     const loginId = user.user_metadata?.teacher_login_id || user.email
@@ -21,7 +22,7 @@ export async function getSessionSchoolId(supabase: any) {
         .eq('teacher_login_id', loginId)
         .maybeSingle()
 
-    return data?.school_id
+    return data?.school_id ? String(data.school_id) : null
 }
 
 export async function getAllStudents(): Promise<StudentProfile[]> {
@@ -30,48 +31,79 @@ export async function getAllStudents(): Promise<StudentProfile[]> {
         const schoolId = await getSessionSchoolId(supabase)
         if (!schoolId) return []
 
-        const { data: attendanceLogs, error: logError } = await supabase
+        let db = supabase;
+        if (isServiceRoleConfigured()) {
+            try {
+                db = createAdminServiceClient();
+            } catch {
+                db = supabase;
+            }
+        }
+
+        const studentMap: Record<string, StudentProfile> = {};
+
+        // 1. Fetch registered students from student_details for this school
+        const { data: details, error: detailError } = await db
+            .from("student_details")
+            .select("*")
+            .eq("school_id", schoolId);
+
+        if (detailError) {
+            console.error("Error fetching student_details:", detailError);
+        }
+
+        (details || []).forEach((d: any) => {
+            const id = String(d.student_id);
+            studentMap[id] = {
+                student_id: id,
+                name: d.student_name || 'Student',
+                class_name: d.class_name || 'Unassigned',
+                roll_number: d.roll_number || '',
+                guardian_name: d.guardian_name || '',
+                contact_number: d.contact_number || '',
+                address: d.address || '',
+                blood_group: d.blood_group || '',
+            };
+        });
+
+        // 2. Fetch students from attendance logs for this school
+        const { data: attendanceLogs, error: logError } = await db
             .from("attendance")
-            .select("student_id, name, class_name")
+            .select("student_id, name, class_name, roll_number")
             .eq('school_id', schoolId)
             .order("class_name", { ascending: true });
 
-        if (logError) throw logError;
+        if (logError) {
+            console.error("Error fetching attendance logs for students:", logError);
+        }
 
-        const studentMap: Record<string, StudentProfile> = {};
-        attendanceLogs?.forEach((log) => {
-            if (!studentMap[log.student_id]) {
-                studentMap[log.student_id] = {
-                    student_id: log.student_id,
-                    name: log.name,
-                    class_name: log.class_name,
+        (attendanceLogs || []).forEach((log: any) => {
+            const id = String(log.student_id);
+            if (!studentMap[id]) {
+                studentMap[id] = {
+                    student_id: id,
+                    name: log.name || 'Student',
+                    class_name: log.class_name || 'Unassigned',
+                    roll_number: log.roll_number || '',
                 };
+            } else {
+                // If details had fallback name or class, fill in from attendance
+                if (!studentMap[id].name || studentMap[id].name === 'Student') {
+                    studentMap[id].name = log.name || studentMap[id].name;
+                }
+                if (!studentMap[id].class_name || studentMap[id].class_name === 'Unassigned') {
+                    studentMap[id].class_name = log.class_name || studentMap[id].class_name;
+                }
+                if (!studentMap[id].roll_number) {
+                    studentMap[id].roll_number = log.roll_number || '';
+                }
             }
         });
 
-        // For student_details, assume we should also filter by school_id if available,
-        // but typically student details is 1-1 with student_id. Let's just fetch for those students.
-        // Actually the prompt says "filter by school_id to getAllStudents(), getClassAnalytics(), getAtRiskStudents(), getMonthlyAttendance()"
-        const { data: details, error: detailError } = await supabase
-            .from("student_details")
-            .select("*");
-
-        if (details) {
-            details.forEach((d) => {
-                if (studentMap[d.student_id]) {
-                    studentMap[d.student_id] = {
-                        ...studentMap[d.student_id],
-                        roll_number: d.roll_number,
-                        guardian_name: d.guardian_name,
-                        contact_number: d.contact_number,
-                        address: d.address,
-                        blood_group: d.blood_group,
-                    };
-                }
-            });
-        }
-
-        return Object.values(studentMap).sort((a, b) => a.class_name.localeCompare(b.class_name) || a.name.localeCompare(b.name));
+        return Object.values(studentMap).sort((a, b) => 
+            (a.class_name || '').localeCompare(b.class_name || '') || 
+            (a.name || '').localeCompare(b.name || '')
+        );
     } catch (error) {
         console.error("Error fetching students:", error);
         return [];
@@ -80,17 +112,34 @@ export async function getAllStudents(): Promise<StudentProfile[]> {
 
 export async function updateStudentDetails(id: string, details: Partial<StudentProfile>) {
     const supabase = await createClient()
-    const { error } = await supabase
+    const schoolId = await getSessionSchoolId(supabase)
+    if (!schoolId) throw new Error("Not authenticated");
+
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
+    const { error } = await db
         .from('student_details')
         .upsert({
             student_id: id,
+            school_id: schoolId,
+            student_name: details.name,
+            class_name: details.class_name,
             roll_number: details.roll_number,
             guardian_name: details.guardian_name,
             contact_number: details.contact_number,
             address: details.address,
             blood_group: details.blood_group,
-            updated_at: new Date()
-        })
+            updated_at: new Date().toISOString()
+        }, {
+            onConflict: 'student_id,school_id'
+        });
 
     if (error) throw error;
 }
@@ -100,15 +149,24 @@ export async function getStudentAttendanceHistory(studentId: string): Promise<an
     const schoolId = await getSessionSchoolId(supabase)
     if (!schoolId) return []
 
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
     const thirtyDaysAgo = Date.now() - (35 * 24 * 60 * 60 * 1000)
 
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await db
         .from('attendance')
         .select('date, timestamp, is_present, is_manual, marked_by, correction_reason')
         .eq('school_id', schoolId)
         .eq('student_id', studentId)
-        .gte('date', thirtyDaysAgo)
-        .order('date', { ascending: false })
+        .gte('timestamp', thirtyDaysAgo)
+        .order('timestamp', { ascending: false })
 
     if (error) {
         console.error("Error fetching student history:", error)
@@ -116,7 +174,7 @@ export async function getStudentAttendanceHistory(studentId: string): Promise<an
     }
 
     return (logs || []).map((l: any) => {
-        const ts = Number(l.date || l.timestamp)
+        const ts = Number(l.timestamp || l.date || Date.now())
         return {
             date: ts,
             dateStr: new Date(ts).toISOString().split('T')[0],

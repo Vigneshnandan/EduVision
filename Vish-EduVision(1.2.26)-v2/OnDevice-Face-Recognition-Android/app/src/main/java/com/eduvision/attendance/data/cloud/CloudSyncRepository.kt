@@ -22,6 +22,7 @@ import org.koin.core.annotation.Single
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import com.eduvision.attendance.data.ObjectBoxStore
+import retrofit2.HttpException
 
 @Single
 class CloudSyncRepository(
@@ -46,19 +47,20 @@ class CloudSyncRepository(
                 }
 
                 val request = chain.request().newBuilder()
-                    .addHeader("apikey", API_KEY)
-                    .addHeader("Authorization", authHeader)
-                    .addHeader("Content-Type", "application/json")
+                    .header("apikey", API_KEY)
+                    .header("Authorization", authHeader)
+                    .header("Content-Type", "application/json")
                     .build()
 
                 val response = chain.proceed(request)
 
-                if (response.code == 401 || response.code == 400) {
+                // Only fallback retry on 401 Unauthorized if using user session
+                if (response.code == 401 && !sessionToken.isNullOrBlank()) {
                     response.close()
                     val retryRequest = chain.request().newBuilder()
-                        .addHeader("apikey", API_KEY)
-                        .addHeader("Authorization", "Bearer $API_KEY")
-                        .addHeader("Content-Type", "application/json")
+                        .header("apikey", API_KEY)
+                        .header("Authorization", "Bearer $API_KEY")
+                        .header("Content-Type", "application/json")
                         .build()
                     chain.proceed(retryRequest)
                 } else {
@@ -93,7 +95,8 @@ class CloudSyncRepository(
             Result.success(Unit)
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(e)
+            val message = extractErrorMessage(e)
+            Result.failure(Exception(message, e))
         }
     }
 
@@ -134,7 +137,8 @@ class CloudSyncRepository(
             Result.success(records.size)
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(e)
+            val message = extractErrorMessage(e)
+            Result.failure(Exception(message, e))
         }
     }
 
@@ -150,7 +154,11 @@ class CloudSyncRepository(
             }
 
             // Also flush pending student registration records for this school
-            syncPendingStudents(currentSchoolId)
+            val studentSyncResult = syncPendingStudents(currentSchoolId)
+            if (studentSyncResult.isFailure) {
+                // Non-fatal: log and proceed with attendance sync
+                studentSyncResult.exceptionOrNull()?.printStackTrace()
+            }
 
             val attendanceBox = boxStore.boxFor(AttendanceRecord::class.java)
             val personBox = boxStore.boxFor(PersonRecord::class.java)
@@ -164,14 +172,22 @@ class CloudSyncRepository(
             val cloudRecords = allAttendance.mapNotNull { attendance ->
                 val person = personBox.get(attendance.studentId)
                 if (person != null && (person.schoolId.isNullOrBlank() || person.schoolId == currentSchoolId)) {
+                    val className = if (attendance.studentClass.isNotBlank()) {
+                        attendance.studentClass
+                    } else if (person.studentClass.isNotBlank()) {
+                        person.studentClass
+                    } else {
+                        "Unassigned"
+                    }
+
                     CloudAttendanceRecord(
                         studentId = person.personID,
-                        name = person.personName,
-                        className = person.studentClass,
-                        rollNumber = person.rollNumber,
+                        name = person.personName.ifBlank { "Student" },
+                        className = className,
+                        rollNumber = person.rollNumber.ifBlank { "1" },
                         date = attendance.date,
                         isPresent = attendance.isPresent,
-                        timestamp = attendance.timestamp,
+                        timestamp = if (attendance.timestamp > 0) attendance.timestamp else System.currentTimeMillis(),
                         isManual = attendance.isManual,
                         markedBy = attendance.markedByTeacherId.ifEmpty { null },
                         schoolId = currentSchoolId
@@ -190,8 +206,25 @@ class CloudSyncRepository(
             Result.success("Synced ${cloudRecords.size} records successfully for school $currentSchoolId")
         } catch (e: Exception) {
             e.printStackTrace()
-            Result.failure(e)
+            val message = extractErrorMessage(e)
+            Result.failure(Exception(message, e))
+        }
+    }
+
+    private fun extractErrorMessage(e: Exception): String {
+        return if (e is HttpException) {
+            try {
+                val errorBody = e.response()?.errorBody()?.string()
+                if (!errorBody.isNullOrBlank()) {
+                    "HTTP ${e.code()}: $errorBody"
+                } else {
+                    "HTTP ${e.code()}"
+                }
+            } catch (ignored: Exception) {
+                "HTTP ${e.code()}"
+            }
+        } else {
+            e.message ?: "Network error"
         }
     }
 }
-
