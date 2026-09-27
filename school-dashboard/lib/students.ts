@@ -165,13 +165,25 @@ export async function getStudentAttendanceHistory(studentId: string): Promise<an
 
     const thirtyDaysAgo = Date.now() - (35 * 24 * 60 * 60 * 1000)
 
-    const { data: logs, error } = await db
+    let { data: logs, error } = await db
         .from('attendance')
-        .select('date, timestamp, is_present, is_manual, marked_by')
+        .select('date, timestamp, is_present, is_manual, marked_by, correction_reason')
         .eq('school_id', schoolId)
         .eq('student_id', studentId)
         .gte('timestamp', thirtyDaysAgo)
         .order('timestamp', { ascending: false })
+
+    if (error && (error as any).code === '42703') {
+        const fallback = await db
+            .from('attendance')
+            .select('date, timestamp, is_present, is_manual, marked_by')
+            .eq('school_id', schoolId)
+            .eq('student_id', studentId)
+            .gte('timestamp', thirtyDaysAgo)
+            .order('timestamp', { ascending: false })
+        logs = fallback.data as any
+        error = fallback.error as any
+    }
 
     if (error) {
         console.error("Error fetching student history:", error)

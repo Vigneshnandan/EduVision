@@ -53,7 +53,8 @@ data class AttendanceRecord(
     var isPresent: Boolean = false,
     var studentClass: String = "",
     var isManual: Boolean = false,        // NEW — true if a teacher edited/overrode this record
-    var markedByTeacherId: String = ""    // NEW — which teacher made the manual edit
+    var markedByTeacherId: String = "",   // NEW — which teacher made the manual edit
+    var correctionReason: String = ""     // NEW — reason provided for manual override
 )
 
 data class RecognitionMetrics(

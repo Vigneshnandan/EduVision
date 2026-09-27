@@ -224,7 +224,8 @@ class CloudSyncRepository(
                         timestamp = if (attendance.timestamp > 0) attendance.timestamp else System.currentTimeMillis(),
                         isManual = attendance.isManual,
                         markedBy = attendance.markedByTeacherId.ifEmpty { null },
-                        schoolId = currentSchoolId
+                        schoolId = currentSchoolId,
+                        correctionReason = attendance.correctionReason.ifBlank { null }
                     )
                 } else {
                     null

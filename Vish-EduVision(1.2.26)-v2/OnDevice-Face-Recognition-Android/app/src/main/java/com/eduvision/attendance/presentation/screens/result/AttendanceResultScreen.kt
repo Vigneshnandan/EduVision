@@ -9,6 +9,7 @@ package com.eduvision.attendance.presentation.screens.result
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -87,11 +88,11 @@ class AttendanceResultViewModel(
         }
     }
 
-    fun toggleStudent(personId: Long) {
+    fun toggleStudent(personId: Long, reason: String = "") {
         val currentTeacher = authRepository.getCurrentTeacher()
         val teacherId = currentTeacher?.teacherLoginId ?: ""
 
-        attendanceDraftUseCase.togglePresence(personId, teacherId)
+        attendanceDraftUseCase.togglePresence(personId, teacherId, reason)
 
         val index = results.indexOfFirst { it.person.personID == personId }
         if (index != -1) {
@@ -144,6 +145,7 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
     }
 
     var searchQuery by remember { mutableStateOf("") }
+    var studentToOverride by remember { mutableStateOf<StudentResult?>(null) }
 
     val results = viewModel.results
     val totalStudents = results.size
@@ -416,10 +418,129 @@ fun AttendanceResultScreen(studentClass: String, date: Long, onNavigateHome: () 
                 filteredResults.forEach { result ->
                     ResultItem(
                         result = result,
-                        onToggle = { viewModel.toggleStudent(result.person.personID) }
+                        onToggle = { studentToOverride = result }
                     )
                 }
             }
         }
     }
+
+    if (studentToOverride != null) {
+        val student = studentToOverride!!
+        ManualOverrideDialog(
+            studentName = student.person.personName,
+            currentIsPresent = student.isPresent,
+            onConfirm = { reason ->
+                viewModel.toggleStudent(student.person.personID, reason)
+                studentToOverride = null
+            },
+            onDismiss = {
+                studentToOverride = null
+            }
+        )
+    }
+}
+
+@Composable
+fun ManualOverrideDialog(
+    studentName: String,
+    currentIsPresent: Boolean,
+    onConfirm: (reason: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedReason by remember { mutableStateOf("Face Not Recognized") }
+    var customReason by remember { mutableStateOf("") }
+
+    val presetReasons = listOf(
+        "Face Not Recognized",
+        "Medical / Sick Leave",
+        "Late Arrival",
+        "Parent Excused",
+        "Camera / Lighting Issue",
+        "Other"
+    )
+
+    val targetStatus = if (currentIsPresent) "ABSENT" else "PRESENT"
+    val targetColor = if (currentIsPresent) Color(0xFFD32F2F) else Color(0xFF2E7D32)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text(
+                    text = "Manual Attendance Override",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$studentName • Marking as $targetStatus",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold, color = targetColor)
+                )
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                Text(
+                    text = "Select a reason for this manual change:",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                presetReasons.forEach { reason ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedReason = reason }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (selectedReason == reason),
+                            onClick = { selectedReason = reason },
+                            colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF0288D1))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = reason,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+
+                if (selectedReason == "Other") {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = customReason,
+                        onValueChange = { customReason = it },
+                        label = { Text("Specify Reason") },
+                        placeholder = { Text("e.g. Permission slip submitted") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val finalReason = if (selectedReason == "Other") {
+                        customReason.ifBlank { "Manual Correction" }
+                    } else {
+                        selectedReason
+                    }
+                    onConfirm(finalReason)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0288D1))
+            ) {
+                Text("Apply Override", color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color.Gray)
+            }
+        },
+        shape = RoundedCornerShape(16.dp)
+    )
 }
