@@ -78,18 +78,23 @@ export async function getAllStudents(): Promise<StudentProfile[]> {
         }
 
         (attendanceLogs || []).forEach((log: any) => {
-            const id = String(log.student_id);
+            const logName = (log.name || '').trim();
+            if (!logName) return;
+            let id = String(log.student_id);
+            if (studentMap[id] && studentMap[id].name.trim().toLowerCase() !== logName.toLowerCase() && studentMap[id].name !== 'Student') {
+                id = `${log.student_id}_${logName.toLowerCase()}`;
+            }
             if (!studentMap[id]) {
                 studentMap[id] = {
-                    student_id: id,
-                    name: log.name || 'Student',
+                    student_id: String(log.student_id),
+                    name: logName || 'Student',
                     class_name: log.class_name || 'Unassigned',
                     roll_number: log.roll_number || '',
                 };
             } else {
                 // If details had fallback name or class, fill in from attendance
                 if (!studentMap[id].name || studentMap[id].name === 'Student') {
-                    studentMap[id].name = log.name || studentMap[id].name;
+                    studentMap[id].name = logName || studentMap[id].name;
                 }
                 if (!studentMap[id].class_name || studentMap[id].class_name === 'Unassigned') {
                     studentMap[id].class_name = log.class_name || studentMap[id].class_name;
@@ -162,7 +167,7 @@ export async function getStudentAttendanceHistory(studentId: string): Promise<an
 
     const { data: logs, error } = await db
         .from('attendance')
-        .select('date, timestamp, is_present, is_manual, marked_by, correction_reason')
+        .select('date, timestamp, is_present, is_manual, marked_by')
         .eq('school_id', schoolId)
         .eq('student_id', studentId)
         .gte('timestamp', thirtyDaysAgo)

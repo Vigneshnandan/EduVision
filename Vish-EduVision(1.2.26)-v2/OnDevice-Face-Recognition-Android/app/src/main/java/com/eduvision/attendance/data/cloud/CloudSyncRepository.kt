@@ -36,33 +36,66 @@ class CloudSyncRepository(
     private val BASE_URL = BuildConfig.SUPABASE_URL
     private val API_KEY = BuildConfig.SUPABASE_ANON_KEY
 
+    private fun isJwtExpired(token: String): Boolean {
+        return try {
+            val parts = token.split(".")
+            if (parts.size < 2) return true
+            val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE or android.util.Base64.NO_PADDING or android.util.Base64.NO_WRAP))
+            val json = org.json.JSONObject(payload)
+            val exp = json.optLong("exp", 0L)
+            if (exp > 0) {
+                (System.currentTimeMillis() / 1000) >= (exp - 30) // 30-second buffer before expiry
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            true
+        }
+    }
+
     private val api: CloudSyncService by lazy {
         val client = okhttp3.OkHttpClient.Builder()
             .addInterceptor { chain ->
+                val originalRequest = chain.request()
                 val sessionToken = encryptedSessionStore.getSessionToken()
-                val authHeader = if (!sessionToken.isNullOrBlank()) {
+                val isExpired = sessionToken.isNullOrBlank() || isJwtExpired(sessionToken)
+                val authHeader = if (!isExpired) {
                     "Bearer $sessionToken"
                 } else {
                     "Bearer $API_KEY"
                 }
 
-                val request = chain.request().newBuilder()
+                // Buffer request body to allow retransmission without draining/sending empty body (fixes PGRST102)
+                val originalBody = originalRequest.body
+                val bodyBytes = if (originalBody != null) {
+                    val buffer = okio.Buffer()
+                    originalBody.writeTo(buffer)
+                    buffer.readByteArray()
+                } else null
+                val contentType = originalBody?.contentType()
+
+                val requestBuilder = originalRequest.newBuilder()
                     .header("apikey", API_KEY)
                     .header("Authorization", authHeader)
                     .header("Content-Type", "application/json")
-                    .build()
 
-                val response = chain.proceed(request)
+                if (bodyBytes != null) {
+                    requestBuilder.method(originalRequest.method, okhttp3.RequestBody.create(contentType, bodyBytes))
+                }
+
+                val response = chain.proceed(requestBuilder.build())
 
                 // Only fallback retry on 401 Unauthorized if using user session
-                if (response.code == 401 && !sessionToken.isNullOrBlank()) {
+                if (response.code == 401 && !isExpired) {
                     response.close()
-                    val retryRequest = chain.request().newBuilder()
+                    val retryBuilder = originalRequest.newBuilder()
                         .header("apikey", API_KEY)
                         .header("Authorization", "Bearer $API_KEY")
                         .header("Content-Type", "application/json")
-                        .build()
-                    chain.proceed(retryRequest)
+                    if (bodyBytes != null) {
+                        retryBuilder.method(originalRequest.method, okhttp3.RequestBody.create(contentType, bodyBytes))
+                    }
+                    chain.proceed(retryBuilder.build())
                 } else {
                     response
                 }
@@ -170,8 +203,9 @@ class CloudSyncRepository(
 
             // Scope push to the logged-in teacher's school_id only
             val cloudRecords = allAttendance.mapNotNull { attendance ->
+                if (attendance.date <= 0) return@mapNotNull null
                 val person = personBox.get(attendance.studentId)
-                if (person != null && (person.schoolId.isNullOrBlank() || person.schoolId == currentSchoolId)) {
+                if (person != null && person.personName.isNotBlank() && (person.schoolId.isNullOrBlank() || person.schoolId == currentSchoolId)) {
                     val className = if (attendance.studentClass.isNotBlank()) {
                         attendance.studentClass
                     } else if (person.studentClass.isNotBlank()) {
@@ -182,7 +216,7 @@ class CloudSyncRepository(
 
                     CloudAttendanceRecord(
                         studentId = person.personID,
-                        name = person.personName.ifBlank { "Student" },
+                        name = person.personName.trim().ifBlank { "Student" },
                         className = className,
                         rollNumber = person.rollNumber.ifBlank { "1" },
                         date = attendance.date,
