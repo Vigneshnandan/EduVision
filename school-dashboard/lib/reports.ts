@@ -115,15 +115,23 @@ export async function getMonthlyAttendance(
     const validLogs = (logs || []) as any[]
 
     validLogs.forEach(log => {
-        const id = String(log.student_id)
+        if (!log.date && !log.timestamp) return;
+        const logName = (log.name || '').trim();
+        if (!logName) return;
+
+        let id = String(log.student_id);
+        if (rowMap[id] && rowMap[id].name.trim().toLowerCase() !== logName.toLowerCase() && rowMap[id].name !== 'Student') {
+            id = `${log.student_id}_${logName.toLowerCase()}`;
+        }
+
         if (!rowMap[id]) {
             rowMap[id] = {
-                studentId: id,
-                name: log.name || 'Student',
+                studentId: String(log.student_id),
+                name: logName || 'Student',
                 className: log.class_name || 'Unassigned',
                 attendance: {},
                 manualDays: {}
-            }
+            };
         }
 
         const logTime = Number(log.date || log.timestamp)
