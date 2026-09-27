@@ -1,0 +1,9 @@
+## EduVision Local Configuration Template
+## Copy this file to local.properties and configure with your Supabase credentials.
+## NEVER commit local.properties to source control.
+
+sdk.dir=YOUR_ANDROID_SDK_PATH
+
+# Supabase Project Configuration
+SUPABASE_URL=https://YOUR_SUPABASE_PROJECT_ID.supabase.co
+SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY_PLACEHOLDER

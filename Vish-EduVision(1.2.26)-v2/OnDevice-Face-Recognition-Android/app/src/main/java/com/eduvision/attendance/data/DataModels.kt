@@ -1,0 +1,64 @@
+/*
+ * Copyright © 2026 EduVision. All rights reserved.
+ *
+ * This file is part of EduVision and is original EduVision IP.
+ * Draft for human/legal review, not a final legal filing.
+ */
+
+package com.eduvision.attendance.data
+
+import io.objectbox.annotation.Entity
+import io.objectbox.annotation.HnswIndex
+import io.objectbox.annotation.Id
+import io.objectbox.annotation.Index
+import io.objectbox.annotation.VectorDistanceType
+
+@Entity
+data class FaceImageRecord(
+    // primary-key of `FaceImageRecord`
+    @Id var recordID: Long = 0,
+    // personId is derived from `PersonRecord`
+    @Index var personID: Long = 0,
+    var personName: String = "",
+    // the FaceNet-512 model provides a 512-dimensional embedding
+    // the FaceNet model provides a 128-dimensional embedding
+    @HnswIndex(
+        dimensions = 512,
+        distanceType = VectorDistanceType.COSINE,
+    ) var faceEmbedding: FloatArray = floatArrayOf(),
+)
+
+@Entity
+data class PersonRecord(
+    // primary-key
+    @Id var personID: Long = 0,
+    var personName: String = "",
+    // number of images selected by the user
+    // under the name of the person
+    var numImages: Long = 0,
+    // time when the record was added
+    var addTime: Long = 0,
+    var studentClass: String = "",
+    var rollNumber: String = "",
+    var schoolId: String = "",
+    var pendingStudentSync: Boolean = false
+)
+
+@Entity
+data class AttendanceRecord(
+    @Id var id: Long = 0,
+    @Index var studentId: Long = 0, // Foreign key to PersonRecord
+    var date: Long = 0, // Day timestamp (midnight)
+    var timestamp: Long = 0, // Exact time of marking
+    var isPresent: Boolean = false,
+    var studentClass: String = "",
+    var isManual: Boolean = false,        // NEW — true if a teacher edited/overrode this record
+    var markedByTeacherId: String = ""    // NEW — which teacher made the manual edit
+)
+
+data class RecognitionMetrics(
+    val timeFaceDetection: Long,
+    val timeVectorSearch: Long,
+    val timeFaceEmbedding: Long,
+    val timeFaceSpoofDetection: Long,
+)

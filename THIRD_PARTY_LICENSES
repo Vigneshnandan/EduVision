@@ -1,0 +1,88 @@
+[DRAFT FOR HUMAN / LEGAL REVIEW — NOT A FINAL LEGAL FILING]
+
+# EduVision Third-Party Software Licenses Inventory
+
+This document inventories third-party software components and libraries incorporated into
+or consumed by EduVision, alongside their licensing terms and commercial use conditions.
+
+---
+
+## 1. Core Frameworks & Scaffolding
+
+Component: OnDevice-Face-Recognition-Android
+Source: https://github.com/shubham0204/OnDevice-Face-Recognition-Android
+License: Apache License 2.0
+Usage: Modified derivative (Android module scaffold, MainActivity.kt,
+       MainApplication.kt, di/AppModule.kt, ObjectBoxStore.kt, PersonDB.kt,
+       ImagesVectorDB.kt, domain/embeddings/FaceNet.kt,
+       domain/face_detection/*, parts of Compose screen architecture)
+Commercial use: Permitted subject to Apache 2.0 obligations (attribution, notice)
+Attribution required: Yes
+
+Component: MiniFASNet / Silent-Face-Anti-Spoofing
+Source: https://github.com/minivision-ai/Silent-Face-Anti-Spoofing
+License: Apache License 2.0
+Usage: spoof_model_scale_2_7.tflite, spoof_model_scale_4_0.tflite
+       (format-converted via DeepFace / AI Edge Torch tooling)
+Commercial use: Permitted subject to Apache 2.0 obligations
+Attribution required: Yes
+
+Component: Google MediaPipe
+Source: https://github.com/google-ai-edge/mediapipe
+License: Apache License 2.0 (framework & BlazeFace detector)
+Usage: Vision detection pipeline and blaze_face_short_range.tflite asset
+Commercial use: Permitted subject to Apache 2.0 obligations
+Attribution required: Yes
+
+Component: Google ML Kit (Face Detection SDK)
+License: Google APIs / ML Kit Terms of Service
+Commercial use: Permitted subject to Google Developer Terms of Service
+Usage: Fallback / benchmark face detection
+
+---
+
+## 2. Android Module Transitive Dependency Scan (B2.4)
+
+Verified via Gradle Runtime Classpath Dependency Analysis:
+
+| Dependency Group | Typical Libraries | License | Commercial Permissibility |
+|---|---|---|---|
+| Jetpack Compose & AndroidX | androidx.compose.*, androidx.activity, androidx.lifecycle, androidx.core | Apache-2.0 | Permitted |
+| CameraX | androidx.camera:camera-core, camera-camera2, camera-lifecycle, camera-view | Apache-2.0 | Permitted |
+| Kotlin Standard Libraries | org.jetbrains.kotlin:kotlin-stdlib, kotlinx-coroutines-android | Apache-2.0 | Permitted |
+| ObjectBox Local Vector DB | io.objectbox:objectbox-android, io.objectbox:objectbox-kotlin | Apache-2.0 | Permitted |
+| Dependency Injection | io.insert-koin:koin-android, koin-androidx-compose, koin-annotations | Apache-2.0 | Permitted |
+| TFLite / LiteRT Runtime | org.tensorflow:tensorflow-lite, tensorflow-lite-gpu, tensorflow-lite-support | Apache-2.0 | Permitted |
+| MediaPipe Vision Tasks | com.google.mediapipe:tasks-vision, tasks-core | Apache-2.0 | Permitted |
+| Security & Cryptography | androidx.security:security-crypto, com.google.crypto.tink:tink-android | Apache-2.0 | Permitted |
+| Networking & Serialization | com.squareup.retrofit2:retrofit, com.squareup.okhttp3:okhttp, com.google.code.gson:gson | Apache-2.0 | Permitted |
+| Image Loading | io.coil-kt:coil-compose | Apache-2.0 | Permitted |
+| Google Play Services SDKs | play-services-mlkit-face-detection, play-services-base, play-services-tasks | Google APIs ToS | Permitted (non-OSS SDK) |
+
+---
+
+## 3. Dashboard Web Application Transitive Dependency Scan (B2.4)
+
+Verified via `npx license-checker` across 438 total packages in `Dashboard/node_modules`:
+
+| License Type | Package Count | Example Packages | Compliance / Usage Notes |
+|---|---|---|---|
+| **MIT** | 371 | next, react, react-dom, @supabase/supabase-js, tailwindcss, postcss, zod, radix-ui | Permitted; include MIT copyright notices |
+| **ISC** | 28 | lucide-react, glob, which, semver, yallist | Permitted; preserve notices |
+| **Apache-2.0** | 20 | typescript, undici-types, @grpc/grpc-js | Permitted subject to Apache-2.0 conditions |
+| **BSD-2-Clause** | 8 | web-streams-polyfill, uri-js, dotenv | Permitted; retain BSD notices |
+| **BSD-3-Clause** | 3 | source-map, d3-scale, d3-shape | Permitted; retain BSD notices |
+| **MPL-2.0** | 3 | caniuse-lite | Permitted file-level copyleft (build toolchain dependency only) |
+| **Python-2.0** | 1 | argparse | Permitted permissive license |
+| **CC-BY-4.0 / CC0 / 0BSD** | 3 | caniuse-lite data, tslib | Permitted permissive |
+| **Apache-2.0 AND LGPL-3.0-or-later** | 1 | @img/sharp-win32-x64 (prebuilt libvips wrapper) | Dynamically linked native image library; compliant with LGPL-3.0 dynamic linking terms |
+| **UNLICENSED** | 1 | eduvision-dashboard@0.1.0 | Proprietary EduVision root application code |
+
+---
+
+## 4. IP Ownership & Assignment Status (B2.5)
+
+**Status: OUTSTANDING (Human / Legal Task)**
+Formal founder, employee, and contractor IP-assignment and confidentiality agreements must
+be executed upon corporate incorporation and prior to commercial deployment or financing rounds.
+Do not treat technical git attribution as a substitute for binding IP assignment contracts.

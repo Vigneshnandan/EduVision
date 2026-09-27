@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -5,12 +8,21 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
+
+val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: "https://YOUR_SUPABASE_PROJECT_ID.supabase.co"
+val supabaseAnonKey = localProperties.getProperty("SUPABASE_ANON_KEY") ?: "YOUR_SUPABASE_ANON_KEY_PLACEHOLDER"
+
 android {
-    namespace = "com.ml.shubham0204.facenet_android"
+    namespace = "com.eduvision.attendance"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.ml.shubham0204.facenet_android"
+        applicationId = "com.eduvision.attendance"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -20,6 +32,9 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     signingConfigs {
@@ -50,6 +65,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -124,6 +140,9 @@ dependencies {
     // Cloud Sync
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
+    // Encrypted Session Storage
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
 
 apply(plugin = "io.objectbox")
