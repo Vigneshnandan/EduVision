@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import { getSessionSchoolId } from "@/lib/students";
+import { createAdminServiceClient, isServiceRoleConfigured } from "@/lib/supabase-service";
 import { ClassRecord } from "./types";
 
 export async function getClassesWithDetails(): Promise<{ classes: ClassRecord[]; teachers: { teacher_id: string; teacher_name: string }[] }> {
@@ -7,26 +8,45 @@ export async function getClassesWithDetails(): Promise<{ classes: ClassRecord[];
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) return { classes: [], teachers: [] };
 
-    // Fetch teachers for dropdowns
-    const { data: teachersData } = await supabase
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
+    // Fetch teachers for dropdowns - note public.teachers primary key is 'id'
+    const { data: teachersData, error: teachersError } = await db
         .from('teachers')
-        .select('teacher_id, teacher_name')
+        .select('*')
         .eq('school_id', schoolId)
+        .order('teacher_name', { ascending: true });
+
+    if (teachersError) {
+        console.error("Error fetching teachers in getClassesWithDetails:", teachersError.message);
+    }
+
     // Build teacher map for name resolution
     const teacherMap: Record<string, string> = {};
     (teachersData || []).forEach((t: any) => {
-        const id = t.teacher_id || t.id;
+        const id = String(t.id ?? t.teacher_id ?? '');
         const name = t.teacher_name || t.name || 'Staff Member';
-        if (id) teacherMap[id] = name;
+        if (id) {
+            teacherMap[id] = name;
+        }
     });
 
-    const teachers = (teachersData || []).map((t: any) => ({
-        teacher_id: t.teacher_id || t.id,
-        teacher_name: t.teacher_name || t.name || 'Staff Member'
-    }));
+    const teachers = (teachersData || [])
+        .filter((t: any) => t.is_active !== false)
+        .map((t: any) => ({
+            teacher_id: String(t.id ?? t.teacher_id ?? ''),
+            teacher_name: t.teacher_name || t.name || 'Staff Member'
+        }));
 
     // Count students per class from attendance/student_details
-    const { data: attendanceData } = await supabase
+    const { data: attendanceData } = await db
         .from('attendance')
         .select('student_id, class_name')
         .eq('school_id', schoolId);
@@ -45,7 +65,7 @@ export async function getClassesWithDetails(): Promise<{ classes: ClassRecord[];
     });
 
     // Try fetching from classes table
-    const { data: classesData, error } = await supabase
+    const { data: classesData, error } = await db
         .from('classes')
         .select('class_id, school_id, class_name, class_teacher_id, created_at')
         .eq('school_id', schoolId)
@@ -71,21 +91,21 @@ export async function getClassesWithDetails(): Promise<{ classes: ClassRecord[];
             school_id: schoolId,
             class_name: className
         }));
-        await supabase.from('classes').insert(seedPayload);
+        await db.from('classes').insert(seedPayload);
         
         // Re-fetch after seeding
-        const { data: reseeded } = await supabase
+        const { data: reseeded } = await db
             .from('classes')
             .select('class_id, school_id, class_name, class_teacher_id, created_at')
             .eq('school_id', schoolId)
             .order('class_name', { ascending: true });
 
         const mapped: ClassRecord[] = (reseeded || []).map((c: any) => ({
-            class_id: c.class_id,
-            school_id: c.school_id,
+            class_id: String(c.class_id),
+            school_id: String(c.school_id),
             class_name: c.class_name,
-            class_teacher_id: c.class_teacher_id,
-            teacher_name: teacherMap[c.class_teacher_id] || null,
+            class_teacher_id: c.class_teacher_id ? String(c.class_teacher_id) : null,
+            teacher_name: c.class_teacher_id ? (teacherMap[String(c.class_teacher_id)] || 'Assigned') : null,
             student_count: studentCountMap[c.class_name]?.size || 0,
             created_at: c.created_at
         }));
@@ -93,11 +113,11 @@ export async function getClassesWithDetails(): Promise<{ classes: ClassRecord[];
     }
 
     const mappedClasses: ClassRecord[] = (classesData || []).map((c: any) => ({
-        class_id: c.class_id,
-        school_id: c.school_id,
+        class_id: String(c.class_id),
+        school_id: String(c.school_id),
         class_name: c.class_name,
-        class_teacher_id: c.class_teacher_id,
-        teacher_name: teacherMap[c.class_teacher_id] || null,
+        class_teacher_id: c.class_teacher_id ? String(c.class_teacher_id) : null,
+        teacher_name: c.class_teacher_id ? (teacherMap[String(c.class_teacher_id)] || 'Assigned') : null,
         student_count: studentCountMap[c.class_name]?.size || 0,
         created_at: c.created_at
     }));
@@ -110,7 +130,16 @@ export async function createClass(className: string, teacherId?: string | null) 
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) throw new Error("Not authenticated");
 
-    const { error } = await supabase
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
+    const { error } = await db
         .from('classes')
         .insert({
             school_id: schoolId,
@@ -126,7 +155,16 @@ export async function updateClass(classId: string, className: string, teacherId?
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) throw new Error("Not authenticated");
 
-    const { error } = await supabase
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
+    const { error } = await db
         .from('classes')
         .update({
             class_name: className.trim(),
@@ -143,7 +181,16 @@ export async function deleteClass(classId: string) {
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) throw new Error("Not authenticated");
 
-    const { error } = await supabase
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
+    const { error } = await db
         .from('classes')
         .delete()
         .eq('class_id', classId)
