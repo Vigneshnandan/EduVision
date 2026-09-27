@@ -71,7 +71,7 @@ export async function toggleTeacherStatus(teacherId: string, currentStatus: bool
     const { error } = await supabase
         .from('teachers')
         .update({ is_active: !currentStatus })
-        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`)
+        .eq('id', teacherId)
         .eq('school_id', schoolId);
 
     if (error) throw error;
@@ -90,7 +90,7 @@ export async function updateTeacherRole(teacherId: string, newRole: 'teacher' | 
     const { error } = await supabase
         .from('teachers')
         .update({ role: newRole })
-        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`)
+        .eq('id', teacherId)
         .eq('school_id', schoolId);
 
     if (error) throw error;
@@ -248,7 +248,7 @@ export async function setTeacherPassword(teacherId: string, teacherLoginId: stri
         .from('teachers')
         .select('*')
         .eq('school_id', schoolId)
-        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`)
+        .eq('id', teacherId)
         .maybeSingle();
 
     if (!teacher) throw new Error("Teacher record not found.");
@@ -341,7 +341,7 @@ export async function setTeacherPassword(teacherId: string, teacherLoginId: stri
             .from('teachers')
             .update({ auth_user_id: authUserId })
             .eq('school_id', schoolId)
-            .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`);
+            .eq('id', teacherId);
 
         if (updateError) throw new Error(updateError.message);
     }
@@ -360,7 +360,7 @@ export async function deleteTeacherRecord(teacherId: string) {
         .from('teachers')
         .delete()
         .eq('school_id', schoolId)
-        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`);
+        .eq('id', teacherId);
 
     if (error) throw error;
 }

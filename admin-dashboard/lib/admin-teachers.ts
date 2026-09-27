@@ -67,7 +67,7 @@ export async function togglePlatformTeacherStatus(teacherId: string, currentStat
     const { error } = await supabase
         .from('teachers')
         .update({ is_active: !currentStatus })
-        .or(`teacher_id.eq.${teacherId},id.eq.${teacherId}`)
+        .eq('id', teacherId)
 
     if (error) throw error
 }
