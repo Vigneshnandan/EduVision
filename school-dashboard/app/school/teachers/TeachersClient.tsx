@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { TeacherRecord } from "@/lib/types"
-import { toggleStatusAction, changeRoleAction, addTeacherAction, setTeacherPasswordAction } from "./actions"
+import { toggleStatusAction, changeRoleAction, addTeacherAction, setTeacherPasswordAction, deleteTeacherAction } from "./actions"
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Users, UserCheck, ShieldAlert, ShieldCheck, Plus, Power, Shield, Loader2, KeyRound, Copy, Check, Eye, EyeOff, RefreshCw, Smartphone } from "lucide-react"
+import { Users, UserCheck, ShieldAlert, ShieldCheck, Plus, Power, Shield, Loader2, KeyRound, Copy, Check, Eye, EyeOff, RefreshCw, Smartphone, Trash2 } from "lucide-react"
 
 function generateRandomPassword() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%"
@@ -108,15 +108,21 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
 
         try {
             const result = await addTeacherAction(formData)
+            if (result?.error) {
+                alert(result.error)
+                setIsSubmitting(false)
+                return
+            }
             
+            const teacherData = result?.teacher
             const newTeacher: TeacherRecord = {
-                teacher_id: result?.id ? String(result.id) : `temp-${Date.now()}`,
-                school_id: result?.school_id ? String(result.school_id) : (teachers[0]?.school_id || ''),
+                teacher_id: teacherData?.id ? String(teacherData.id) : `temp-${Date.now()}`,
+                school_id: teacherData?.school_id ? String(teacherData.school_id) : (teachers[0]?.school_id || ''),
                 teacher_name: name,
                 teacher_login_id: loginId,
                 role: role,
                 is_active: true,
-                auth_user_id: result?.auth_created ? 'provisioned' : (password ? 'provisioned' : null),
+                auth_user_id: teacherData?.auth_created ? 'provisioned' : (password ? 'provisioned' : null),
                 created_at: new Date().toISOString()
             }
 
@@ -149,7 +155,12 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
 
         setIsSettingPassword(true)
         try {
-            await setTeacherPasswordAction(targetTeacher.teacher_id, targetTeacher.teacher_login_id, targetPassword)
+            const res = await setTeacherPasswordAction(targetTeacher.teacher_id, targetTeacher.teacher_login_id, targetPassword)
+            if (res?.error) {
+                alert(res.error)
+                setIsSettingPassword(false)
+                return
+            }
             
             // Mark auth_user_id as provisioned in local state
             setTeachers(prev => prev.map(t => 
@@ -170,6 +181,26 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
             alert(err.message || "Failed to set password")
         } finally {
             setIsSettingPassword(false)
+        }
+    }
+
+    const handleDeleteTeacher = async (teacherId: string, name: string) => {
+        if (!confirm(`Are you sure you want to remove ${name} from the school roster? This will delete their faculty record.`)) {
+            return
+        }
+
+        setActionLoadingId(teacherId)
+        try {
+            const res = await deleteTeacherAction(teacherId)
+            if (res?.error) {
+                alert(res.error)
+                return
+            }
+            setTeachers(prev => prev.filter(t => t.teacher_id !== teacherId))
+        } catch (err: any) {
+            alert(err.message || "Failed to remove teacher")
+        } finally {
+            setActionLoadingId(null)
         }
     }
 
@@ -354,7 +385,8 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                                                             size="sm"
                                                             disabled={isLoading}
                                                             onClick={() => handleToggleStatus(teacher.teacher_id, teacher.is_active)}
-                                                            className={`text-xs h-8 ${teacher.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                                            className={`text-xs h-8 ${teacher.is_active ? 'text-slate-600 hover:bg-slate-100' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                                                            title={teacher.is_active ? 'Deactivate faculty member' : 'Activate faculty member'}
                                                         >
                                                             {isLoading ? (
                                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -364,6 +396,18 @@ export function TeachersClient({ initialTeachers, isSchoolAdmin }: TeachersClien
                                                                     {teacher.is_active ? 'Deactivate' : 'Activate'}
                                                                 </>
                                                             )}
+                                                        </Button>
+
+                                                        {/* Remove/Delete button */}
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={isLoading}
+                                                            onClick={() => handleDeleteTeacher(teacher.teacher_id, teacher.teacher_name)}
+                                                            className="text-xs h-8 text-red-600 hover:bg-red-50 hover:text-red-700 p-2"
+                                                            title="Delete faculty record from roster"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
                                                         </Button>
                                                     </div>
                                                 ) : (
