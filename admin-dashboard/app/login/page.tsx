@@ -42,10 +42,10 @@ export default async function LoginPage(props: LoginPageProps) {
               name="email"
               type="email"
               autoComplete="email"
-              defaultValue="admin@eduvision.gov"
+              defaultValue="admin@eduvision.com"
               required
               className="block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 text-sm placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-              placeholder="admin@eduvision.gov"
+              placeholder="admin@eduvision.com"
             />
           </div>
 
@@ -82,7 +82,7 @@ export default async function LoginPage(props: LoginPageProps) {
             <span>Configured Platform Admin Credentials:</span>
           </div>
           <div className="font-mono text-[11px] text-slate-600 bg-white p-2 rounded border border-slate-200 select-all space-y-0.5">
-            <div><span className="text-slate-400">Email:</span> admin@eduvision.gov</div>
+            <div><span className="text-slate-400">Email:</span> admin@eduvision.com</div>
             <div><span className="text-slate-400">Pass:</span> AdminPassword123!</div>
           </div>
         </div>

@@ -32,6 +32,7 @@ interface AuthService {
 
     @POST("/rest/v1/teachers")
     suspend fun registerTeacherRecord(
+        @retrofit2.http.Header("Authorization") authHeader: String? = null,
         @Body teacherRecord: Map<String, String>
     )
 }

@@ -12,7 +12,9 @@
 1. [Architecture & System Overview](#1-architecture--system-overview)
 2. [Prerequisites & System Requirements](#2-prerequisites--system-requirements)
 3. [Step 1: Clone Repository & Checkout Branch](#step-1-clone-repository--checkout-branch)
-4. [Step 2: Environment Variables Configuration](#step-2-environment-variables-configuration)
+4. [Step 2: Environment Variables Configuration & Admin Provisioning](#step-2-environment-variables-configuration)
+   - [2.4 Platform Administrator Provisioning](#24-platform-administrator-provisioning-supabase-sql)
+   - [2.5 Database Migrations & Security Hardening](#25-database-migrations--security-hardening-supabase-sql)
 5. [Step 3: Running Both Web Dashboards Locally](#step-3-running-both-web-dashboards-locally)
 6. [Step 4: Building & Installing the Android APK](#step-4-building--installing-the-android-apk)
 7. [Step 5: End-to-End Workflow Testing Guide](#step-5-end-to-end-workflow-testing-guide)
@@ -106,6 +108,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 ```
 
+> **Security & Reliability Note**: `SUPABASE_SERVICE_ROLE_KEY` is strictly required for the Admin Dashboard. If this key is missing from `.env.local` or deployment settings:
+> - A prominent **Amber Alert Banner** will display across the top of the Admin Dashboard.
+> - Administrative write actions (e.g. school registration, teacher status changes) and audit logging will **fail loudly with a descriptive exception** rather than silently degrading to the unprivileged anon key.
+
 ### 2.2 School Dashboard (`school-dashboard/.env.local`)
 
 Navigate to `school-dashboard` and create `.env.local`:
@@ -143,6 +149,74 @@ SUPABASE_ANON_KEY=your-supabase-anon-key
 
 > **Note on Windows paths**: In `local.properties`, backslashes in `sdk.dir` must be escaped with double backslashes `\\` or use forward slashes `/`.
 
+### 2.4 Platform Administrator Provisioning (Supabase SQL)
+
+Platform administration requires an account in `auth.users` and a corresponding authorization record in `public.platform_admins`.
+
+To provision the default master admin account (`admin@eduvision.com` / `AdminPassword123!`), open the **Supabase Dashboard > SQL Editor** and execute:
+
+```sql
+DO $$
+DECLARE
+    admin_uid UUID;
+BEGIN
+    -- 1. Check if user already exists in auth.users
+    SELECT id INTO admin_uid FROM auth.users WHERE email = 'admin@eduvision.com';
+
+    -- 2. Create the auth user if not present
+    IF admin_uid IS NULL THEN
+        admin_uid := gen_random_uuid();
+        INSERT INTO auth.users (
+            instance_id,
+            id,
+            aud,
+            role,
+            email,
+            encrypted_password,
+            email_confirmed_at,
+            raw_app_meta_data,
+            raw_user_meta_data,
+            created_at,
+            updated_at
+        ) VALUES (
+            '00000000-0000-0000-0000-000000000000',
+            admin_uid,
+            'authenticated',
+            'authenticated',
+            'admin@eduvision.com',
+            crypt('AdminPassword123!', gen_salt('bf')),
+            now(),
+            '{"provider":"email","providers":["email"]}',
+            '{"role":"platform_admin"}',
+            now(),
+            now()
+        );
+    END IF;
+
+    -- 3. Grant platform_admin authorization
+    INSERT INTO public.platform_admins (auth_user_id, full_name)
+    VALUES (admin_uid, 'Platform Master Admin')
+    ON CONFLICT DO NOTHING;
+END $$;
+```
+
+### 2.5 Database Migrations & Security Hardening (Supabase SQL)
+
+Both dashboards maintain a 100% synchronized schema history located in:
+- `admin-dashboard/supabase/migrations/`
+- `school-dashboard/supabase/migrations/`
+
+#### Core Schema Facts:
+- **`schools.school_id`**: Stored as **`BIGINT`** (auto-incrementing integer identity, e.g., `1`, `2`, `42`). Foreign keys in `teachers`, `classes`, `school_holidays`, and `mdm_daily_registers` are also `BIGINT`.
+- **`attendance.school_id` & `student_details.school_id`**: Stored as **`TEXT`** to accept mobile payloads from the Android face recognition client.
+- **Unified Tenant Isolation**: `public.current_teacher_school_id()` returns `TEXT` and all policies compare using `school_id::text = public.current_teacher_school_id()`, eliminating Postgres type mismatch errors between `BIGINT` and `TEXT`.
+
+#### Recommended: Apply Security Hardening Migration
+Before testing, execute [`20260927000000_tighten_schools_and_teachers_rls.sql`](file:///e:/Vishal-Project/Technova/EduVision/admin-dashboard/supabase/migrations/20260927000000_tighten_schools_and_teachers_rls.sql) in your **Supabase Dashboard > SQL Editor**:
+1. **Teacher Role Enforcement**: Creates `public.is_school_admin()` security-definer helper, enforcing that only active school administrators can invite colleagues, modify roles, or toggle teacher status.
+2. **Directory Privacy**: Strips public anonymous access from sensitive `schools` fields (contact email/phone, status, plan tier), exposing only basic directory information (`school_id`, `school_name`, `school_code`, `address`) for dropdown search.
+3. **Defense-in-Depth Server Actions**: `school-dashboard` server actions actively verify admin privileges in the database rather than relying solely on UI button state.
+
 ---
 
 ## Step 3: Running Both Web Dashboards Locally
@@ -159,7 +233,7 @@ npm run dev
 
 - Accessible at: **`http://localhost:3000`**
 - **Default Master Admin Credentials**:
-  - Email: `admin@eduvision.gov`
+  - Email: `admin@eduvision.com`
   - Password: `AdminPassword123!`
 
 ### Terminal 2: School Dashboard (Port 3001)
@@ -230,11 +304,11 @@ sequenceDiagram
     participant SD as School Dashboard (3001)
     participant DB as Supabase Cloud
 
-    Admin->>AD: 1. Login (admin@eduvision.gov)
+    Admin->>AD: 1. Login (admin@eduvision.com)
     Admin->>AD: 2. Register School (/admin/schools/new)
-    AD->>DB: Store School & Generate UUID
-    Admin->>Teacher: 3. Provide School UUID & Code
-    Teacher->>App: 4. Register Account (Name, ID, Password, School UUID)
+    AD->>DB: Store School & Generate ID
+    Admin->>Teacher: 3. Provide School ID & Code
+    Teacher->>App: 4. Register Account (Name, ID, Password, School ID)
     App->>DB: Auth SignUp + teachers table link
     Teacher->>SD: 5. Login to School Dashboard (3001)
     Teacher->>SD: 6. Setup Classes (10A, 10B) & Holidays
@@ -254,7 +328,7 @@ sequenceDiagram
 
 1. Open your browser and navigate to **`http://localhost:3000/login`**.
 2. Sign in with the master admin credentials:
-   - **Email**: `admin@eduvision.gov`
+   - **Email**: `admin@eduvision.com`
    - **Password**: `AdminPassword123!`
 3. You will be redirected to the **Platform Command Center (`/admin`)**.
 4. In the left navigation, click **Institutions** (`/admin/schools`).
@@ -268,7 +342,7 @@ sequenceDiagram
    - **Subscription Tier**: Select **Paid** or **Free** (select `Paid` to unlock MDM export capabilities).
 7. Click **Create Institution**.
 8. You will be redirected back to the school directory. Locate your new school and **click on it to view details**.
-9. **CRITICAL STEP**: Copy the **School ID (UUID)** displayed on the school detail page (e.g., `8f4b6d21-a1e9-4e89-9a2c-7b4d1c5e9f8a`). You will use this UUID to bind the mobile app and teacher account.
+9. **CRITICAL STEP**: Copy the **School ID** displayed on the school detail page (e.g., `1` or `2`). You will use this numeric ID to bind the mobile app and teacher account.
 
 ---
 
@@ -281,7 +355,7 @@ sequenceDiagram
    - **Full Name**: `Ananya Sharma`
    - **Teacher ID / Email**: `ananya@greenwood.edu` *(or simply `ananya.sharma`)*
    - **Password**: `TeacherPass123!`
-   - **School ID**: Paste the **School UUID** copied from Admin Dashboard in Phase A.
+   - **School ID**: Enter the **School ID** (e.g., `1`) copied from Admin Dashboard in Phase A.
    - **School Name**: `Greenwood International Academy`
 5. Tap **Register**.
 6. The app registers the teacher with Supabase Auth, links them to the school via `teachers` table metadata, and saves the session securely in `EncryptedSharedPreferences` (AES256-GCM).
@@ -399,9 +473,9 @@ Switch back to your browser at **`http://localhost:3001`**:
    - For Paid schools, test the **Export MDM Daily Summary** report.
 5. **At-Risk Chronic Absenteeism Monitor (`/at-risk`)**:
    - Check if any students with consecutive absences trigger the at-risk threshold banner.
-6. **Faculty Management (`/school/teachers`)**:
-   - Navigate to `/school/teachers` to see your educator profile.
-   - If designated as `school_admin`, you can toggle faculty permissions.
+6. **Faculty Management & Role-Gated Actions (`/school/teachers`)**:
+   - Navigate to `/school/teachers` to view the school roster.
+   - **Role Protection Verification**: Only genuine `school_admin` users (verified at the database RLS level via `public.is_school_admin()` and validated server-side in actions) can invite new teachers, toggle colleague status, or promote users. Regular teachers cannot bypass permissions even by invoking server actions directly.
 
 ---
 
@@ -425,6 +499,7 @@ Switch back to the Admin Dashboard at **`http://localhost:3000`**:
      - `school_created`: Greenwood International Academy
      - `plan_tier_updated`: Free -> Paid
      - `teacher_status_changed`
+   - **Guaranteed Audit Integrity**: Audit logging uses the service-role client and will fail loudly with an exception if credentials or the audit table cannot be reached, ensuring no administrative action occurs unrecorded.
 5. **Data Privacy Tooling & Right-to-Erasure (`/admin/schools/[id]`)**:
    - Go to **Institutions** -> Click on `Greenwood International Academy`.
    - Under **Compliance & Data Privacy**:
@@ -436,8 +511,8 @@ Switch back to the Admin Dashboard at **`http://localhost:3000`**:
 ## 8. Troubleshooting & FAQs
 
 ### Q1: The Admin Dashboard says "Not authorized as platform admin" when logging in.
-- **Cause**: Supabase Auth user does not have `platform_admins` database record or `platform_admin` metadata role.
-- **Fix**: The system automatically grants access to emails ending in `@eduvision.gov` or starting with `admin@`. Ensure you use `admin@eduvision.gov` with password `AdminPassword123!`.
+- **Cause**: Supabase Auth user does not have an entry in the `platform_admins` database table.
+- **Fix**: Execute the one-click SQL provisioning script in [Section 2.4](#24-platform-administrator-provisioning-supabase-sql) in your Supabase SQL Editor. This creates or links `admin@eduvision.com` with password `AdminPassword123!` and grants full platform admin authorization.
 
 ### Q2: Android Gradle build fails with "SDK location not found".
 - **Fix**: Open `Vish-EduVision(1.2.26)-v2/OnDevice-Face-Recognition-Android/local.properties` and verify `sdk.dir` matches your local Android SDK location:

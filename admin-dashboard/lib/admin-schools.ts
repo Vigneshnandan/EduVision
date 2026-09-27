@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createAdminServiceClient } from "@/lib/supabase-service"
 
 export interface SchoolDirectoryItem {
     school_id: string;
@@ -24,7 +24,7 @@ export function generateSchoolCode(schoolName: string): string {
 }
 
 export async function getAllSchoolsDirectory(): Promise<SchoolDirectoryItem[]> {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     const { data: schools, error: schoolErr } = await supabase
         .from('schools')
@@ -90,7 +90,7 @@ export async function getAllSchoolsDirectory(): Promise<SchoolDirectoryItem[]> {
 }
 
 export async function getSchoolDetail(schoolId: string) {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     const { data: school, error } = await supabase
         .from('schools')
@@ -144,7 +144,7 @@ export async function registerSchoolRecord(formData: {
     plan_tier?: 'free' | 'paid';
     plan_renews_at?: string;
 }) {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     let code = formData.school_code?.trim()
     if (!code) {
@@ -197,7 +197,7 @@ export async function updateSchoolRecord(schoolId: string, formData: {
     contact_phone?: string;
     at_risk_threshold_pct?: number;
 }) {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     const { error } = await supabase
         .from('schools')
@@ -215,7 +215,7 @@ export async function updateSchoolRecord(schoolId: string, formData: {
 }
 
 export async function updateSchoolStatusRecord(schoolId: string, status: 'trial' | 'active' | 'suspended') {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     const { error } = await supabase
         .from('schools')
@@ -230,7 +230,7 @@ export async function updateSchoolSubscriptionRecord(
     planTier: 'free' | 'paid',
     planRenewsAt: string | null
 ) {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     try {
         const { error } = await supabase

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase-server"
+import { createAdminServiceClient } from "@/lib/supabase-service"
 
 export interface PlatformTeacherItem {
     teacher_id: string;
@@ -15,7 +15,7 @@ export async function getAllPlatformTeachers(): Promise<{
     teachers: PlatformTeacherItem[];
     schools: { school_id: string; school_name: string }[];
 }> {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     // 1. Fetch schools for name resolution and filter dropdown
     const { data: schoolsData } = await supabase
@@ -62,7 +62,7 @@ export async function getAllPlatformTeachers(): Promise<{
 }
 
 export async function togglePlatformTeacherStatus(teacherId: string, currentStatus: boolean) {
-    const supabase = await createClient()
+    const supabase = createAdminServiceClient()
 
     const { error } = await supabase
         .from('teachers')

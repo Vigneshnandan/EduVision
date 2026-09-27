@@ -6,7 +6,7 @@
  */
 
 create table if not exists public.schools (
-    school_id uuid primary key default gen_random_uuid(),
+    school_id bigint primary key generated always as identity, -- Matches live Supabase schema (bigint/int8)
     school_name text not null,
     school_code text unique,              -- optional short code for dropdown search
     address text,
@@ -15,7 +15,19 @@ create table if not exists public.schools (
 
 alter table public.schools enable row level security;
 
--- Read-only, unauthenticated: needed so the Register screen's dropdown
--- can be pre-fetched before a teacher account exists.
+-- Drop legacy open policy
+drop policy if exists "Public read for school directory" on public.schools;
+
+-- Directory read: Authenticated teachers read their own school, or unauthenticated directory queries for active/trial schools
 create policy "Public read for school directory" on public.schools
-    for select using (true);
+    for select
+    using (
+        (auth.role() = 'authenticated' and school_id::text = public.current_teacher_school_id()::text)
+        or (status in ('active', 'trial'))
+    );
+
+-- Column-level privilege restriction: revoke wide select on schools from anon
+-- and grant only non-sensitive directory fields needed for pre-login dropdown
+revoke select on public.schools from anon;
+grant select (school_id, school_name, school_code, address) on public.schools to anon;
+grant select on public.schools to authenticated;

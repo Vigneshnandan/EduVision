@@ -7,22 +7,22 @@ export async function checkIsSchoolAdmin(): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     
-    // Check user_metadata role
-    if (user.user_metadata?.role === 'school_admin') return true;
+    // Check server-controlled app_metadata (cannot be modified by client)
+    if (user.app_metadata?.role === 'school_admin' || user.app_metadata?.role === 'platform_admin') return true;
 
-    // Check teacher record role
+    // Verify teacher record role in database
     const schoolId = await getSessionSchoolId(supabase);
     if (!schoolId) return false;
 
     const loginId = user.user_metadata?.teacher_login_id || user.email;
     const { data } = await supabase
         .from('teachers')
-        .select('role')
+        .select('role, is_active')
         .eq('school_id', schoolId)
-        .eq('teacher_login_id', loginId)
+        .or(`auth_user_id.eq.${user.id},teacher_login_id.eq.${loginId}`)
         .maybeSingle();
 
-    return data?.role === 'school_admin';
+    return data?.role === 'school_admin' && data?.is_active !== false;
 }
 
 export async function getSchoolTeachers(): Promise<{ teachers: TeacherRecord[]; isSchoolAdmin: boolean }> {

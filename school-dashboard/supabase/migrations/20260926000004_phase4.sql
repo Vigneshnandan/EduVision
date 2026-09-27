@@ -14,7 +14,7 @@ create policy "Block attendance sync for suspended schools" on public.attendance
     for insert
     with check (
         coalesce(
-            (select status from public.schools where schools.school_id = attendance.school_id limit 1),
+            (select status from public.schools where schools.school_id::text = attendance.school_id::text limit 1),
             'active'
         ) != 'suspended'
     );

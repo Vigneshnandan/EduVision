@@ -18,29 +18,30 @@ create table if not exists public.attendance (
 );
 
 -- Helper function to resolve the current authenticated teacher's school_id
--- Checks JWT claims user_metadata first, then falls back to public.teachers
+-- Prioritizes authenticated auth.uid() match in public.teachers, then verified claims
 create or replace function public.current_teacher_school_id()
-returns uuid
+returns text
 language sql
 security definer
 stable
 as $$
     select coalesce(
-        nullif(current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'school_id', '')::uuid,
-        (select school_id from public.teachers where teacher_login_id = (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'teacher_login_id') limit 1)
+        (select school_id::text from public.teachers where auth_user_id = auth.uid() limit 1),
+        nullif(current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'school_id', '')::text,
+        (select school_id::text from public.teachers where teacher_login_id = (current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'teacher_login_id') and (auth_user_id is null or auth_user_id = auth.uid()) limit 1)
     );
 $$;
 
 -- Add multi-tenancy and metadata columns to student_details
 alter table public.student_details
-    add column if not exists school_id uuid references public.schools(school_id),
-    add column if not exists teacher_id uuid,
+    add column if not exists school_id text,
+    add column if not exists teacher_id text,
     add column if not exists student_name text,
     add column if not exists class_name text;
 
 -- Add multi-tenancy and manual correction columns to attendance
 alter table public.attendance
-    add column if not exists school_id uuid references public.schools(school_id),
+    add column if not exists school_id text,
     add column if not exists is_manual boolean default false,
     add column if not exists marked_by text;
 

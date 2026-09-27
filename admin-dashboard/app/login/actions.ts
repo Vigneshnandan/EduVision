@@ -30,7 +30,7 @@ export async function login(formData: FormData) {
   try {
     const { data: adminData } = await supabaseAdmin
       .from('platform_admins')
-      .select('*')
+      .select('admin_id')
       .eq('auth_user_id', authData.user.id)
       .maybeSingle()
 
@@ -39,21 +39,6 @@ export async function login(formData: FormData) {
     }
   } catch (err) {
     console.warn("Could not query platform_admins:", err)
-  }
-
-  // 2. Fallback check: metadata role or designated admin email
-  if (!isPlatformAdmin) {
-    const role = authData.user.user_metadata?.role || authData.user.app_metadata?.role
-    const userEmail = (authData.user.email || '').toLowerCase()
-
-    if (
-      role === 'platform_admin' ||
-      userEmail === 'admin@eduvision.gov' ||
-      userEmail.startsWith('admin@') ||
-      userEmail === 'vishal@gmail.com'
-    ) {
-      isPlatformAdmin = true
-    }
   }
 
   if (!isPlatformAdmin) {

@@ -20,36 +20,34 @@ export async function logAdminAction(params: {
     adminId?: string;
     ipAddress?: string;
 }) {
-    try {
-        const supabase = createAdminServiceClient()
+    const supabase = createAdminServiceClient()
 
-        let actor = params.adminId
-        if (!actor) {
-            try {
-                const sessionClient = await createClient()
-                const { data: { user } } = await sessionClient.auth.getUser()
-                actor = user?.email || user?.id || 'Platform Admin'
-            } catch {
-                actor = 'Platform Admin'
-            }
+    let actor = params.adminId
+    if (!actor) {
+        try {
+            const sessionClient = await createClient()
+            const { data: { user } } = await sessionClient.auth.getUser()
+            actor = user?.email || user?.id || 'Platform Admin'
+        } catch {
+            actor = 'Platform Admin'
         }
+    }
 
-        const { error } = await supabase
-            .from('admin_audit_logs')
-            .insert({
-                admin_id: actor,
-                action: params.action,
-                target_type: params.targetType,
-                target_id: params.targetId,
-                details: params.details || {},
-                ip_address: params.ipAddress || null
-            })
+    const { error } = await supabase
+        .from('admin_audit_logs')
+        .insert({
+            admin_id: actor,
+            action: params.action,
+            target_type: params.targetType,
+            target_id: params.targetId,
+            details: params.details || {},
+            ip_address: params.ipAddress || null
+        })
 
-        if (error) {
-            console.warn("Notice: could not persist audit log to DB (table may need migration):", error.message)
-        }
-    } catch (err: any) {
-        console.warn("Audit logging encountered an error:", err.message)
+    if (error) {
+        const failureMessage = `[CRITICAL AUDIT LOG FAILURE] Could not persist audit log for action "${params.action}" on ${params.targetType}:${params.targetId}: ${error.message}`
+        console.error(failureMessage)
+        throw new Error(failureMessage)
     }
 }
 

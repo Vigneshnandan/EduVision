@@ -5,7 +5,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-    Building2,
     LayoutDashboard,
     FileText,
     Settings,
@@ -22,11 +21,6 @@ const sidebarItems = [
         title: "Dashboard",
         href: "/",
         icon: LayoutDashboard,
-    },
-    {
-        title: "Admin Schools",
-        href: "/admin/schools",
-        icon: Building2,
     },
     {
         title: "Classes",

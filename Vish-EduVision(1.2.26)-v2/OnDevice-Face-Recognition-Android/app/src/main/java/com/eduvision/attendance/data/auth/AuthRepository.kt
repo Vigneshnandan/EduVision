@@ -36,12 +36,13 @@ class AuthRepository(
     private val authService: AuthService by lazy {
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
+                val builder = chain.request().newBuilder()
                     .addHeader("apikey", apiKey)
-                    .addHeader("Authorization", "Bearer $apiKey")
                     .addHeader("Content-Type", "application/json")
-                    .build()
-                chain.proceed(request)
+                if (chain.request().header("Authorization") == null) {
+                    builder.header("Authorization", "Bearer $apiKey")
+                }
+                chain.proceed(builder.build())
             }
             .build()
 
@@ -121,11 +122,14 @@ class AuthRepository(
 
             // Record in public.teachers table
             try {
+                val authHeader = if (token.isNotBlank()) "Bearer $token" else "Bearer $apiKey"
                 authService.registerTeacherRecord(
-                    mapOf(
+                    authHeader = authHeader,
+                    teacherRecord = mapOf(
                         "teacher_name" to teacherName,
                         "teacher_login_id" to teacherLoginId,
-                        "school_id" to schoolId
+                        "school_id" to schoolId,
+                        "auth_user_id" to remoteId
                     )
                 )
             } catch (ignored: Exception) {
