@@ -16,7 +16,6 @@ interface CloudSyncService {
     suspend fun pushAttendanceRecords(@Body records: List<CloudAttendanceRecord>)
 
     @Headers("Prefer: resolution=merge-duplicates")
-    @POST("/rest/v1/student_details")
+    @POST("/rest/v1/student_details?on_conflict=student_id,school_id")
     suspend fun pushStudentDetails(@Body details: List<CloudStudentDetailsRecord>)
 }
-

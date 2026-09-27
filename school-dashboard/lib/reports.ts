@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase-server'
 import { getSessionSchoolId } from './students'
+import { createAdminServiceClient, isServiceRoleConfigured } from '@/lib/supabase-service'
 import { MonthlyTrend } from './types'
 
 export interface AttendanceGridRow {
@@ -26,8 +27,17 @@ export async function getMonthlyAttendance(
     const schoolId = await getSessionSchoolId(supabase)
     if (!schoolId) return { rows: [], holidays: {}, school: null }
 
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
     // Fetch school info for official register header
-    const { data: school } = await supabase
+    const { data: school } = await db
         .from('schools')
         .select('*')
         .eq('school_id', schoolId)
@@ -39,7 +49,7 @@ export async function getMonthlyAttendance(
     const nextYear = month === 11 ? year + 1 : year
     const endMonthStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
 
-    const { data: holidayData } = await supabase
+    const { data: holidayData } = await db
         .from('school_holidays')
         .select('holiday_date, label')
         .eq('school_id', schoolId)
@@ -63,12 +73,34 @@ export async function getMonthlyAttendance(
         }
     }
 
-    let query = supabase
-        .from('attendance')
-        .select('student_id, name, class_name, date, is_present, is_manual')
+    const rowMap: Record<string, AttendanceGridRow> = {}
+
+    // Pre-populate enrolled students from student_details for this school
+    const { data: studentsData } = await db
+        .from('student_details')
+        .select('student_id, student_name, class_name')
         .eq('school_id', schoolId)
-        .gte('date', startTs)
-        .lte('date', endTs)
+
+    studentsData?.forEach((s: any) => {
+        if (selectedClass && selectedClass !== 'All' && s.class_name !== selectedClass) return;
+        const id = String(s.student_id);
+        if (!rowMap[id]) {
+            rowMap[id] = {
+                studentId: id,
+                name: s.student_name || 'Student',
+                className: s.class_name || 'Unassigned',
+                attendance: {},
+                manualDays: {}
+            };
+        }
+    });
+
+    let query = db
+        .from('attendance')
+        .select('student_id, name, class_name, date, timestamp, is_present, is_manual')
+        .eq('school_id', schoolId)
+        .gte('timestamp', startTs)
+        .lte('timestamp', endTs)
 
     if (selectedClass && selectedClass !== 'All') {
         query = query.eq('class_name', selectedClass)
@@ -76,27 +108,26 @@ export async function getMonthlyAttendance(
 
     const { data: logs, error } = await query
 
-    if (error || !logs) {
+    if (error) {
         console.error('Error fetching monthly logs:', error)
-        return { rows: [], holidays, school }
     }
 
-    const validLogs = logs as any[]
-    const rowMap: Record<string, AttendanceGridRow> = {}
+    const validLogs = (logs || []) as any[]
 
     validLogs.forEach(log => {
-        const id = log.student_id.toString()
+        const id = String(log.student_id)
         if (!rowMap[id]) {
             rowMap[id] = {
                 studentId: id,
-                name: log.name,
+                name: log.name || 'Student',
                 className: log.class_name || 'Unassigned',
                 attendance: {},
                 manualDays: {}
             }
         }
 
-        const dateObj = new Date(log.date)
+        const logTime = Number(log.date || log.timestamp)
+        const dateObj = new Date(logTime)
         const day = dateObj.getDate()
 
         if (log.is_present) {
@@ -120,7 +151,10 @@ export async function getMonthlyAttendance(
     })
 
     return { 
-        rows: Object.values(rowMap).sort((a, b) => (a.className || '').localeCompare(b.className || '') || a.name.localeCompare(b.name)),
+        rows: Object.values(rowMap).sort((a, b) => 
+            (a.className || '').localeCompare(b.className || '') || 
+            a.name.localeCompare(b.name)
+        ),
         holidays,
         school
     }
@@ -133,6 +167,15 @@ export async function getMonthlyTrend(month: number, year: number): Promise<Mont
         return { currentMonthOverallPct: 0, previousMonthOverallPct: 0, diffPct: 0, classComparisons: [] }
     }
 
+    let db = supabase;
+    if (isServiceRoleConfigured()) {
+        try {
+            db = createAdminServiceClient();
+        } catch {
+            db = supabase;
+        }
+    }
+
     // Current month range
     const currentRange = getMonthRange(month, year)
 
@@ -142,20 +185,20 @@ export async function getMonthlyTrend(month: number, year: number): Promise<Mont
     const prevRange = getMonthRange(prevMonth, prevYear)
 
     // Fetch current month attendance
-    const { data: currentLogs } = await supabase
+    const { data: currentLogs } = await db
         .from('attendance')
         .select('class_name, is_present')
         .eq('school_id', schoolId)
-        .gte('date', currentRange.startTs)
-        .lte('date', currentRange.endTs)
+        .gte('timestamp', currentRange.startTs)
+        .lte('timestamp', currentRange.endTs)
 
     // Fetch previous month attendance
-    const { data: prevLogs } = await supabase
+    const { data: prevLogs } = await db
         .from('attendance')
         .select('class_name, is_present')
         .eq('school_id', schoolId)
-        .gte('date', prevRange.startTs)
-        .lte('date', prevRange.endTs)
+        .gte('timestamp', prevRange.startTs)
+        .lte('timestamp', prevRange.endTs)
 
     // Helper to calculate stats
     const calcStats = (logs: any[] | null) => {
