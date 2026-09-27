@@ -50,44 +50,10 @@ as $$
 $$;
 
 -- ============================================================================
--- 3. Automatic trigger on auth.users after insert for reliable teacher linking
+-- 3. Cleanup: Drop any custom triggers on auth.users to protect GoTrue Auth
 -- ============================================================================
-create or replace function public.handle_new_teacher()
-returns trigger
-language plpgsql
-security definer set search_path = public
-as $$
-declare
-    v_school_id public.teachers.school_id%type;
-begin
-    if new.raw_user_meta_data->>'teacher_login_id' is not null and new.raw_user_meta_data->>'school_id' is not null then
-        select school_id into v_school_id
-        from public.schools
-        where school_id::text = new.raw_user_meta_data->>'school_id'
-        limit 1;
-
-        if v_school_id is not null then
-            insert into public.teachers (school_id, teacher_name, teacher_login_id, auth_user_id)
-            values (
-                v_school_id,
-                coalesce(new.raw_user_meta_data->>'teacher_name', 'Teacher'),
-                new.raw_user_meta_data->>'teacher_login_id',
-                new.id
-            )
-            on conflict (school_id, teacher_login_id) do update
-            set auth_user_id = excluded.auth_user_id;
-        end if;
-    end if;
-    return new;
-exception when others then
-    return new;
-end;
-$$;
-
 drop trigger if exists on_auth_user_created_teacher on auth.users;
-create trigger on_auth_user_created_teacher
-    after insert on auth.users
-    for each row execute function public.handle_new_teacher();
+drop function if exists public.handle_new_teacher() cascade;
 
 -- ============================================================================
 -- 4. Scoped RLS policies on public.teachers
