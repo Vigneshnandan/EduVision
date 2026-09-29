@@ -19,6 +19,7 @@ import org.koin.core.annotation.Single
 import retrofit2.Retrofit
 import com.eduvision.attendance.BuildConfig
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.HttpException
 
 @Single
 class AuthRepository(
@@ -29,7 +30,7 @@ class AuthRepository(
     private val teacherBox = boxStore.boxFor(TeacherRecord::class.java)
     private val gson = Gson()
 
-    // Sourced securely from local.properties via BuildConfig — never hardcoded in source control
+    // Sourced securely from local.properties via BuildConfig
     private val baseUrl = BuildConfig.SUPABASE_URL
     private val apiKey = BuildConfig.SUPABASE_ANON_KEY
 
@@ -161,7 +162,8 @@ class AuthRepository(
 
             Result.success(teacher)
         } catch (e: Exception) {
-            Result.failure(e)
+            val message = extractErrorMessage(e)
+            Result.failure(Exception(message, e))
         }
     }
 
@@ -212,7 +214,8 @@ class AuthRepository(
 
             Result.success(teacher)
         } catch (e: Exception) {
-            Result.failure(e)
+            val message = extractErrorMessage(e)
+            Result.failure(Exception(message, e))
         }
     }
 
@@ -246,5 +249,24 @@ class AuthRepository(
     fun logout() {
         encryptedSessionStore.clearSession()
         teacherBox.removeAll()
+    }
+
+    private fun extractErrorMessage(e: Exception): String {
+        return if (e is HttpException) {
+            try {
+                val errorBody = e.response()?.errorBody()?.string()
+                if (!errorBody.isNullOrBlank()) {
+                    val json = org.json.JSONObject(errorBody)
+                    val msg = json.optString("msg", json.optString("message", json.optString("error_description", "")))
+                    if (msg.isNotBlank()) msg else "HTTP ${e.code()}: $errorBody"
+                } else {
+                    "HTTP ${e.code()}"
+                }
+            } catch (ignored: Exception) {
+                "HTTP ${e.code()}"
+            }
+        } else {
+            e.localizedMessage ?: "Authentication failed"
+        }
     }
 }

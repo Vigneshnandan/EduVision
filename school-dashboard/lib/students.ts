@@ -191,10 +191,13 @@ export async function getStudentAttendanceHistory(studentId: string): Promise<an
     }
 
     return (logs || []).map((l: any) => {
-        const ts = Number(l.timestamp || l.date || Date.now())
+        const ts = Number(l.date || l.timestamp || Date.now())
+        // Adjust for IST (+5:30) so dates map accurately to the local calendar day
+        const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+        const dateStr = new Date(ts + IST_OFFSET_MS).toISOString().split('T')[0]
         return {
             date: ts,
-            dateStr: new Date(ts).toISOString().split('T')[0],
+            dateStr: dateStr,
             isPresent: !!l.is_present,
             isManual: !!l.is_manual,
             markedBy: l.marked_by || null,

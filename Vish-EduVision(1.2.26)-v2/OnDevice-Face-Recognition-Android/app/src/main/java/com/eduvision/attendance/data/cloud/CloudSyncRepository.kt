@@ -21,6 +21,7 @@ import kotlinx.coroutines.withContext
 import org.koin.core.annotation.Single
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import com.google.gson.GsonBuilder
 import com.eduvision.attendance.data.ObjectBoxStore
 import retrofit2.HttpException
 
@@ -102,10 +103,14 @@ class CloudSyncRepository(
             }
             .build()
 
+        val gson = GsonBuilder()
+            .serializeNulls()
+            .create()
+
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
             .create(CloudSyncService::class.java)
     }
