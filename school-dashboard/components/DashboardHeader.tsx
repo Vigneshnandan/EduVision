@@ -23,9 +23,7 @@ export function DashboardHeader({
                 <div className="flex justify-between items-center h-16">
                     {/* Left Side: School Branding */}
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <School className="h-6 w-6" />
-                        </div>
+                        <img src="/icon.png" alt="EduVision Logo" className="h-10 w-10 rounded-xl shadow-xs shrink-0" />
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-xl font-bold text-gray-900 leading-tight">

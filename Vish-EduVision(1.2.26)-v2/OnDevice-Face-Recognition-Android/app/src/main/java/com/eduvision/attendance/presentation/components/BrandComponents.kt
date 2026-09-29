@@ -35,51 +35,47 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-private val brandNavy = Color(0xFF004DA6)
-private val brandSkyBlue = Color(0xFF29B6F6)
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import com.eduvision.attendance.R
+
+private val brandNavy = Color(0xFF111827)
+private val brandBlue = Color(0xFF3052F3)
+private val brandSkyBlue = Color(0xFF3052F3)
 
 /**
- * The "EDU VISION" wordmark with a graduation-cap glyph, reused on the home
- * screen and anywhere else the app needs to present its identity.
+ * The official EduVision logo and wordmark lockup matching brand guidelines.
  */
 @Composable
 fun AppLogoLockup(
     modifier: Modifier = Modifier,
     showTagline: Boolean = true,
-    tagline: String = "AI Powered Attendance for a Smarter Tomorrow",
+    tagline: String = "AI-Based Attendance & School Compliance Platform",
     compact: Boolean = false,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Start,
 ) {
-    val iconBoxSize = if (compact) 26.dp else 36.dp
-    val iconSize = if (compact) 14.dp else 20.dp
+    val logoSize = if (compact) 32.dp else 42.dp
     val wordmarkStyle = if (compact) {
-        MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+        MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold)
     } else {
-        MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+        MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold)
     }
     val taglineStyle = if (compact) MaterialTheme.typography.labelSmall else MaterialTheme.typography.bodySmall
 
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(modifier = modifier, horizontalAlignment = horizontalAlignment) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.eduvision_logo),
+                contentDescription = "EduVision Logo",
                 modifier = Modifier
-                    .size(iconBoxSize)
-                    .background(
-                        brush = Brush.linearGradient(listOf(brandSkyBlue, brandNavy)),
-                        shape = RoundedCornerShape(10.dp),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.School,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(iconSize),
-                )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Row {
-                Text(text = "EDU", style = wordmarkStyle, color = brandNavy)
-                Text(text = "VISION", style = wordmarkStyle, color = brandSkyBlue)
+                    .size(logoSize)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "Edu", style = wordmarkStyle, color = brandNavy)
+                Text(text = "Vision", style = wordmarkStyle, color = brandBlue)
             }
         }
         if (showTagline) {
@@ -87,7 +83,8 @@ fun AppLogoLockup(
             Text(
                 text = tagline,
                 style = taglineStyle,
-                color = Color.Gray,
+                color = Color(0xFF64748B),
+                fontWeight = FontWeight.Medium,
             )
         }
     }
