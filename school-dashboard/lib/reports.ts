@@ -134,9 +134,11 @@ export async function getMonthlyAttendance(
             };
         }
 
-        const logTime = Number(log.date || log.timestamp)
-        const dateObj = new Date(logTime)
-        const day = dateObj.getDate()
+        // Adjust for IST (+5:30) so midnight IST timestamps or daytime timestamps map accurately to the local calendar day
+        const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+        const logTime = Number(log.date || log.timestamp);
+        const dateObj = new Date(logTime + IST_OFFSET_MS);
+        const day = dateObj.getUTCDate();
 
         if (log.is_present) {
             rowMap[id].attendance[day] = 'P'

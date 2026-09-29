@@ -85,11 +85,19 @@ export function StudentsClient({ initialStudents }: StudentsClientProps) {
         return matchesSearch && matchesClass;
     });
 
+    // Format Date to YYYY-MM-DD in local time
+    const formatLocalDateStr = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // Heatmap Grid: Build past 35 days calendar
     const heatmapDays = Array.from({ length: 35 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - (34 - i));
-        const dateStr = d.toISOString().split('T')[0];
+        const dateStr = formatLocalDateStr(d);
         const log = historyLogs.find(l => l.dateStr === dateStr);
         const isSunday = d.getDay() === 0;
 

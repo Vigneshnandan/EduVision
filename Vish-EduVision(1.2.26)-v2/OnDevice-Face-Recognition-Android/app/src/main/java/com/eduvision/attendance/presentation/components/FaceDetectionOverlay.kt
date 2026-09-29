@@ -131,118 +131,124 @@ class FaceDetectionOverlay(
             }
             isProcessing = true
 
-            // Transform android.net.Image to Bitmap
-            frameBitmap =
-                createBitmap(image.image!!.width, image.image!!.height)
-            frameBitmap.copyPixelsFromBuffer(image.planes[0].buffer)
+            try {
+                // Use CameraX built-in toBitmap() which handles row stride, pixel stride, format conversion correctly
+                frameBitmap = image.toBitmap()
 
-            // Configure frameHeight and frameWidth for output2overlay transformation matrix
-            // and apply it to `frameBitmap`
-            if (!isImageTransformedInitialized) {
-                imageTransform = Matrix()
-                imageTransform.apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
-                isImageTransformedInitialized = true
-            }
-            frameBitmap =
-                Bitmap.createBitmap(
-                    frameBitmap,
-                    0,
-                    0,
-                    frameBitmap.width,
-                    frameBitmap.height,
-                    imageTransform,
-                    false,
-                )
-
-            if (!isBoundingBoxTransformedInitialized) {
-                boundingBoxTransform = Matrix()
-                boundingBoxTransform.apply {
-                    setScale(
-                        overlayWidth / frameBitmap.width.toFloat(),
-                        overlayHeight / frameBitmap.height.toFloat(),
-                    )
-                    if (cameraFacing == CameraSelector.LENS_FACING_FRONT) {
-                        // Mirror the bounding box coordinates
-                        // for front-facing camera
-                        postScale(
-                            -1f,
-                            1f,
-                            overlayWidth.toFloat() / 2.0f,
-                            overlayHeight.toFloat() / 2.0f,
-                        )
-                    }
+                // Configure frameHeight and frameWidth for output2overlay transformation matrix
+                // and apply it to `frameBitmap`
+                if (!isImageTransformedInitialized) {
+                    imageTransform = Matrix()
+                    imageTransform.apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
+                    isImageTransformedInitialized = true
                 }
-                isBoundingBoxTransformedInitialized = true
-            }
-            CoroutineScope(Dispatchers.Default).launch {
-                val predictions = ArrayList<Prediction>()
-                val (metrics, results) =
-                    viewModel.imageVectorUseCase.getNearestPersonName(
+                frameBitmap =
+                    Bitmap.createBitmap(
                         frameBitmap,
-                        flatSearch,
-                        viewModel.subsetPersonIDs
+                        0,
+                        0,
+                        frameBitmap.width,
+                        frameBitmap.height,
+                        imageTransform,
+                        false,
                     )
 
-                // Validation Logic: Track consecutive frames
-                val currentFrameIds = results.mapNotNull { it.personID }.toSet()
-                val iterator = consecutiveDetectionCounts.iterator()
-                while (iterator.hasNext()) {
-                    val entry = iterator.next()
-                    if (entry.key !in currentFrameIds) {
-                        iterator.remove()
+                if (!isBoundingBoxTransformedInitialized) {
+                    boundingBoxTransform = Matrix()
+                    boundingBoxTransform.apply {
+                        setScale(
+                            overlayWidth / frameBitmap.width.toFloat(),
+                            overlayHeight / frameBitmap.height.toFloat(),
+                        )
+                        if (cameraFacing == CameraSelector.LENS_FACING_FRONT) {
+                            // Mirror the bounding box coordinates
+                            // for front-facing camera
+                            postScale(
+                                -1f,
+                                1f,
+                                overlayWidth.toFloat() / 2.0f,
+                                overlayHeight.toFloat() / 2.0f,
+                            )
+                        }
                     }
+                    isBoundingBoxTransformedInitialized = true
                 }
+                CoroutineScope(Dispatchers.Default).launch {
+                    try {
+                        val predictions = ArrayList<Prediction>()
+                        val (metrics, results) =
+                            viewModel.imageVectorUseCase.getNearestPersonName(
+                                frameBitmap,
+                                flatSearch,
+                                viewModel.subsetPersonIDs
+                            )
 
-                results.forEach { (name, boundingBox, spoofResult, personID) ->
-                    val box = boundingBox.toRectF()
-                    var personName = name
-                    var boxColor = colorScanning
-                    val isSpoofed = spoofResult != null && spoofResult.isSpoof
-
-                    if (viewModel.getNumPeople().toInt() == 0) {
-                        personName = ""
-                    }
-
-                    if (personID != null && personName != "Not recognized" && viewModel.studentClass.isNotEmpty()) {
-                        if (isSpoofed) {
-                            // A spoofed frame must never contribute toward attendance.
-                            // Reset any in-progress streak so the person needs
-                            // FRAME_THRESHOLD consecutive genuinely-live frames
-                            // afterward — a single spoofed frame in the middle of
-                            // a streak isn't just ignored/averaged out.
-                            consecutiveDetectionCounts[personID] = 0
-                            boxColor = colorError
-                            personName = "$personName (Spoof detected)"
-                        } else {
-                            val count = (consecutiveDetectionCounts[personID] ?: 0) + 1
-                            consecutiveDetectionCounts[personID] = count
-
-                            // Trigger only when threshold is reached
-                            if (count == FRAME_THRESHOLD) {
-                                viewModel.markAttendance(personID, personName)
-                            }
-                            if (count < FRAME_THRESHOLD) {
-                                personName = ""
-                                boxColor = colorScanning
-                            } else {
-                                boxColor = colorSuccess
+                        // Validation Logic: Track consecutive frames
+                        val currentFrameIds = results.mapNotNull { it.personID }.toSet()
+                        val iterator = consecutiveDetectionCounts.iterator()
+                        while (iterator.hasNext()) {
+                            val entry = iterator.next()
+                            if (entry.key !in currentFrameIds) {
+                                iterator.remove()
                             }
                         }
-                    } else if (isSpoofed) {
-                        personName = "$personName (Spoof detected)"
-                    }
 
-                    boundingBoxTransform.mapRect(box)
-                    predictions.add(Prediction(box, personName, boxColor))
+                        results.forEach { (name, boundingBox, spoofResult, personID) ->
+                            val box = boundingBox.toRectF()
+                            var personName = name
+                            var boxColor = colorScanning
+                            val isSpoofed = spoofResult != null && spoofResult.isSpoof
+
+                            if (viewModel.getNumPeople().toInt() == 0) {
+                                personName = ""
+                            }
+
+                            if (personID != null && personName != "Not recognized" && viewModel.studentClass.isNotEmpty()) {
+                                if (isSpoofed) {
+                                    consecutiveDetectionCounts[personID] = 0
+                                    boxColor = colorError
+                                    personName = "$personName (Spoof detected)"
+                                } else {
+                                    val count = (consecutiveDetectionCounts[personID] ?: 0) + 1
+                                    consecutiveDetectionCounts[personID] = count
+
+                                    // Trigger only when threshold is reached
+                                    if (count == FRAME_THRESHOLD) {
+                                        viewModel.markAttendance(personID, personName)
+                                    }
+                                    if (count < FRAME_THRESHOLD) {
+                                        personName = ""
+                                        boxColor = colorScanning
+                                    } else {
+                                        boxColor = colorSuccess
+                                    }
+                                }
+                            } else if (isSpoofed) {
+                                personName = "$personName (Spoof detected)"
+                            }
+
+                            boundingBoxTransform.mapRect(box)
+                            predictions.add(Prediction(box, personName, boxColor))
+                        }
+                        withContext(Dispatchers.Main) {
+                            viewModel.faceDetectionMetricsState.value = metrics
+                            this@FaceDetectionOverlay.predictions = predictions.toTypedArray()
+                            boundingBoxOverlay.invalidate()
+                            isProcessing = false
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        withContext(Dispatchers.Main) {
+                            isProcessing = false
+                        }
+                    }
                 }
-                withContext(Dispatchers.Main) {
-                    viewModel.faceDetectionMetricsState.value = metrics
-                    this@FaceDetectionOverlay.predictions = predictions.toTypedArray()
-                    boundingBoxOverlay.invalidate()
-                    isProcessing = false
-                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                isProcessing = false
+            } finally {
+                image.close()
             }
-            image.close()
         }
 
     data class Prediction(
