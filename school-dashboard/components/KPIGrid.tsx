@@ -1,4 +1,4 @@
-import { School, Users, UserCheck, LineChart } from "lucide-react";
+import { School, Users, UserCheck, LineChart, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface KPIGridProps {
@@ -6,87 +6,99 @@ interface KPIGridProps {
     totalStudents?: number;
     totalPresent: number;
     attendanceRate: number;
+    todayManualCount?: number;
+    todayAiCount?: number;
 }
 
 export function KPIGrid({ 
     totalClasses = 0, 
     totalStudents = 0, 
     totalPresent, 
-    attendanceRate 
+    attendanceRate,
+    todayManualCount = 0,
+    todayAiCount = 0,
 }: KPIGridProps) {
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {/* Card 1: Total Academic Classes */}
-            <Card className="border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">
-                                Academic Classes
-                            </p>
-                            <h3 className="text-2xl font-bold text-gray-900">{totalClasses}</h3>
-                        </div>
-                        <div className="p-3 bg-blue-100 rounded-full">
-                            <School className="h-6 w-6 text-blue-600" />
-                        </div>
+            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Academic Classes
+                    </span>
+                    <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                        <School className="h-5 w-5" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+                <div className="mt-3">
+                    <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        {totalClasses}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">
+                        Active registered divisions
+                    </p>
+                </div>
+            </div>
 
             {/* Card 2: Enrolled Students */}
-            <Card className="border-l-4 border-l-purple-500 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">
-                                Enrolled Students
-                            </p>
-                            <h3 className="text-2xl font-bold text-gray-900">{totalStudents}</h3>
-                        </div>
-                        <div className="p-3 bg-purple-100 rounded-full">
-                            <Users className="h-6 w-6 text-purple-600" />
-                        </div>
+            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Enrolled Students
+                    </span>
+                    <div className="p-2.5 bg-purple-50 text-purple-600 rounded-xl">
+                        <Users className="h-5 w-5" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+                <div className="mt-3">
+                    <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        {totalStudents}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">
+                        Active student directory
+                    </p>
+                </div>
+            </div>
 
             {/* Card 3: Students Present Today */}
-            <Card className="border-l-4 border-l-emerald-500 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">
-                                Students Present
-                            </p>
-                            <h3 className="text-2xl font-bold text-gray-900">
-                                {totalPresent}
-                            </h3>
-                        </div>
-                        <div className="p-3 bg-emerald-100 rounded-full">
-                            <UserCheck className="h-6 w-6 text-emerald-600" />
-                        </div>
+            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Students Present
+                    </span>
+                    <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                        <UserCheck className="h-5 w-5" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+                <div className="mt-3">
+                    <h3 className="text-3xl font-extrabold text-emerald-700 tracking-tight">
+                        {totalPresent}
+                    </h3>
+                    <p className="text-xs text-emerald-600 mt-1 font-medium flex items-center gap-1">
+                        Verified present today
+                    </p>
+                </div>
+            </div>
 
             {/* Card 4: Attendance Rate Today */}
-            <Card className="border-l-4 border-l-indigo-500 shadow-sm hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">
-                                Attendance Rate
-                            </p>
-                            <h3 className="text-2xl font-bold text-gray-900">
-                                {isNaN(attendanceRate) ? "0.0" : Number(attendanceRate).toFixed(1)}%
-                            </h3>
-                        </div>
-                        <div className="p-3 bg-indigo-100 rounded-full">
-                            <LineChart className="h-6 w-6 text-indigo-600" />
-                        </div>
+            <div className="bg-white rounded-xl border border-slate-200/80 p-5 shadow-xs hover:shadow-sm transition-all">
+                <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        Attendance Rate
+                    </span>
+                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
+                        <LineChart className="h-5 w-5" />
                     </div>
-                </CardContent>
-            </Card>
+                </div>
+                <div className="mt-3">
+                    <h3 className="text-3xl font-extrabold text-indigo-700 tracking-tight">
+                        {isNaN(attendanceRate) ? "0.0" : Number(attendanceRate).toFixed(1)}%
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">
+                        Campus average for session
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

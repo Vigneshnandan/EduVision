@@ -16,6 +16,8 @@ export interface DashboardData {
         totalStudents: number;
         totalPresent: number;
         attendanceRate: number;
+        todayManualCount: number;
+        todayAiCount: number;
     };
     classPerformance: Array<{
         className: string;
@@ -29,6 +31,7 @@ export interface DashboardData {
         total: number;
     }>;
     batches: ClassBatch[];
+    recentLogs: AttendanceLog[];
     lastSync: string;
 }
 
@@ -122,15 +125,21 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
     const allLogs: AttendanceLog[] = (logsData || []).map((row: any) => {
         if (row.student_id) enrolledStudentIds.add(String(row.student_id));
+        const markedById = row.marked_by ? String(row.marked_by) : undefined;
+        const markedByName = markedById ? (teacherMap[markedById] || markedById) : undefined;
+
         return {
             id: row.id,
             student_id: String(row.student_id),
             name: row.name || 'Student',
             class_name: row.class_name || 'Unassigned',
+            roll_number: row.roll_number ? String(row.roll_number) : undefined,
             is_present: Boolean(row.is_present),
             timestamp: Number(row.timestamp || row.date || Date.now()),
             is_manual: Boolean(row.is_manual),
-            marked_by: row.marked_by || undefined
+            marked_by: markedById,
+            marked_by_name: markedByName,
+            correction_reason: row.correction_reason || undefined
         };
     });
 
@@ -151,9 +160,13 @@ export async function getDashboardData(): Promise<DashboardData | null> {
         ? Math.round((totalPresent / totalEnrolled) * 1000) / 10
         : (todaysLogs.length > 0 ? Math.round((todaysLogs.filter(l => l.is_present).length / todaysLogs.length) * 1000) / 10 : 0);
 
-    // 5. Class Activity Feed & Performance (Today)
+    const todayManualCount = todaysLogs.filter(l => l.is_manual).length;
+    const todayAiCount = todaysLogs.length - todayManualCount;
+
+    // 5. Class Activity Feed & Performance (Today or most recent sessions)
+    const logsForBatches = todaysLogs.length > 0 ? todaysLogs : allLogs;
     const groups: Record<string, AttendanceLog[]> = {};
-    todaysLogs.forEach((log) => {
+    logsForBatches.forEach((log) => {
         const className = log.class_name || 'Unassigned';
         if (!groups[className]) {
             groups[className] = [];
@@ -167,13 +180,18 @@ export async function getDashboardData(): Promise<DashboardData | null> {
 
         const classTotal = classLogs.length;
         const classPresent = classLogs.filter((l) => l.is_present).length;
+        const classAbsent = classTotal - classPresent;
+        const manualCount = classLogs.filter((l) => l.is_manual).length;
+        const aiCount = classTotal - manualCount;
+
         const latestTime = classLogs[0]?.timestamp 
             ? new Date(classLogs[0].timestamp).toISOString() 
             : new Date().toISOString();
 
-        const markedBy = classLogs.find(l => l.marked_by)?.marked_by;
+        const markedByLog = classLogs.find(l => l.marked_by)?.marked_by;
+        const markedByName = markedByLog ? (teacherMap[markedByLog] || markedByLog) : undefined;
         const teacherName = classTeacherMap[className] 
-            || (markedBy ? teacherMap[markedBy] || markedBy : null) 
+            || markedByName 
             || "Unassigned";
 
         return {
@@ -181,7 +199,11 @@ export async function getDashboardData(): Promise<DashboardData | null> {
             lastSync: latestTime,
             totalStudents: classTotal,
             presentCount: classPresent,
+            absentCount: classAbsent,
+            manualCount,
+            aiCount,
             teacherName,
+            markedBy: markedByName,
             students: classLogs,
         };
     });
@@ -189,7 +211,6 @@ export async function getDashboardData(): Promise<DashboardData | null> {
     batchList.sort((a, b) => new Date(b.lastSync).getTime() - new Date(a.lastSync).getTime());
 
     // Prepare Class Performance Chart data
-    // Include configured classes even if no attendance recorded yet
     const classSet = new Set<string>([...configuredClasses, ...Object.keys(groups)]);
     const classPerformance = Array.from(classSet).sort().map(className => {
         const batch = groups[className];
@@ -246,11 +267,14 @@ export async function getDashboardData(): Promise<DashboardData | null> {
             totalClasses,
             totalStudents: totalEnrolled,
             totalPresent,
-            attendanceRate
+            attendanceRate,
+            todayManualCount,
+            todayAiCount
         },
         classPerformance,
         weeklyTrends,
         batches: batchList,
+        recentLogs: allLogs.slice(0, 100),
         lastSync: format(new Date(), "h:mm a")
     };
 }
