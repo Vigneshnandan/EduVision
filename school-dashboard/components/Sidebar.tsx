@@ -71,17 +71,22 @@ export function Sidebar({ isCollapsed, toggleSidebar }: SidebarProps) {
         >
             <div className="p-6 border-b flex items-center justify-between">
                 {!isCollapsed && (
-                    <Link href="/" className="flex flex-col gap-1 overflow-hidden whitespace-nowrap">
-                        <span className="text-2xl font-extrabold text-blue-600 tracking-tight">EduVision</span>
-                        <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded w-fit">
-                            AI Attendance System
-                        </span>
+                    <Link href="/" className="flex items-center gap-3 overflow-hidden whitespace-nowrap">
+                        <img src="/icon.png" alt="EduVision Logo" className="h-9 w-9 rounded-xl shadow-xs shrink-0" />
+                        <div className="flex flex-col">
+                            <span className="text-xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                                Edu<span className="text-blue-600">Vision</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-500 tracking-wide uppercase">
+                                AI Attendance Platform
+                            </span>
+                        </div>
                     </Link>
                 )}
                 {isCollapsed && (
-                    <div className="flex flex-col gap-1 overflow-hidden whitespace-nowrap mx-auto">
-                        <span className="text-xl font-extrabold text-blue-600 tracking-tight">EV</span>
-                    </div>
+                    <Link href="/" className="flex flex-col items-center overflow-hidden mx-auto">
+                        <img src="/icon.png" alt="EduVision Logo" className="h-8 w-8 rounded-lg shadow-xs" />
+                    </Link>
                 )}
 
                 <button

@@ -38,6 +38,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.eduvision.attendance.presentation.components.AppLogoLockup
 import com.eduvision.attendance.presentation.components.CircularPercentRing
 import com.eduvision.attendance.presentation.components.StatusPill
@@ -131,53 +135,84 @@ fun EduVisionHomeScreen(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                AppLogoLockup(modifier = Modifier.weight(1f))
+                AppLogoLockup(
+                    modifier = Modifier.weight(1f),
+                    showTagline = false,
+                    compact = true,
+                    horizontalAlignment = Alignment.Start,
+                )
                 StatusPill(
-                    text = if (isOnline) "Online" else "Offline",
+                    text = if (isOnline) "Cloud Connected" else "Offline Mode",
                     icon = if (isOnline) Icons.Filled.Wifi else Icons.Filled.WifiOff,
-                    containerColor = if (isOnline) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                    contentColor = if (isOnline) Color(0xFF2E7D32) else Color(0xFFC62828),
+                    containerColor = if (isOnline) Color(0xFFECFDF5) else Color(0xFFFEF2F2),
+                    contentColor = if (isOnline) Color(0xFF059669) else Color(0xFFDC2626),
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Greeting
-            Row(
+            // Professional Institutional Console Banner
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Good Morning 👋",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.Black,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Smart attendance, made simple.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                    )
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(Color(0xFFE1F5FE), RoundedCornerShape(16.dp)),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.AccountBalance,
-                        contentDescription = null,
-                        tint = Color(0xFF0288D1),
-                        modifier = Modifier.size(30.dp),
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(Color(0xFF10B981), RoundedCornerShape(4.dp))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "ATTENDANCE CONSOLE",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFF3052F3),
+                                letterSpacing = 0.5.sp,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Campus Biometric Management",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = Color(0xFF0F172A),
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault()).format(Date()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF64748B),
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .background(Color(0xFFEEF2FF), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = null,
+                            tint = Color(0xFF3052F3),
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Today's Attendance card
             Card(
@@ -185,7 +220,7 @@ fun EduVisionHomeScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
             ) {
                 Row(
                     modifier = Modifier
@@ -197,18 +232,18 @@ fun EduVisionHomeScreen(
                         Text(
                             "Today's Attendance",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.Black,
+                            color = Color(0xFF0F172A),
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = "$presentToday/$totalStudents",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFF0288D1),
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+                            color = Color(0xFF3052F3),
                         )
                         Text(
-                            "Students Present",
+                            "Students Present Today",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray,
+                            color = Color(0xFF64748B),
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         LinearProgressIndicator(
@@ -217,8 +252,8 @@ fun EduVisionHomeScreen(
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
-                            color = Color(0xFF29B6F6),
-                            trackColor = Color(0xFFE0E0E0),
+                            color = Color(0xFF3052F3),
+                            trackColor = Color(0xFFE2E8F0),
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
@@ -232,7 +267,7 @@ fun EduVisionHomeScreen(
             Text(
                 "Quick Actions",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color.Black,
+                color = Color(0xFF0F172A),
             )
             Spacer(modifier = Modifier.height(12.dp))
 
